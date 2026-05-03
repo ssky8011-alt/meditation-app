@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="瞑想">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シンプル瞑想アプリ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#app{width:420px;position:relative;border-radius:20px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6)}
+#bg-canvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:rgba(0,0,0,0.2);pointer-events:none;border-radius:20px}
+#content{position:relative;z-index:2;padding:2rem 1.5rem;min-height:580px}
+.screen{display:none}.screen.active{display:block}
+.sub{font-size:13px;color:rgba(255,255,255,0.85);text-align:center;margin-bottom:1.5rem}
+.timer-circle{width:200px;height:200px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.5);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 1rem;background:rgba(255,255,255,0.1)}
+.timer-display{font-size:42px;font-weight:300;color:#fff;letter-spacing:3px}
+.timer-label{font-size:12px;color:rgba(255,255,255,0.65);margin-top:6px}
+.duration-ctrl{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:0.6rem}
+.dur-adj{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.12);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s}
+.dur-adj:active{background:rgba(255,255,255,0.28)}
+.dur-display{font-size:15px;color:#fff;min-width:60px;text-align:center}
+.dur-slider-row{display:flex;align-items:center;gap:10px;margin-bottom:1.2rem;padding:0 8px}
+.dur-slider-row input{flex:1;accent-color:rgba(255,255,255,0.9);cursor:pointer}
+.dur-hint{font-size:11px;color:rgba(255,255,255,0.5);white-space:nowrap}
+.btn-row{display:flex;gap:12px;justify-content:center;margin-bottom:1rem}
+.btn-main{padding:12px 36px;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;border:none;background:rgba(255,255,255,0.92);color:#222;transition:opacity 0.15s}
+.btn-main:hover{opacity:0.9}.btn-main:active{opacity:0.75}
+.btn-sec{padding:12px 20px;border-radius:14px;font-size:15px;cursor:pointer;border:1px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.9)}
+.btn-sec:hover{background:rgba(255,255,255,0.18)}
+.nav{display:flex;justify-content:center;gap:24px;margin-top:1.5rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.12)}
+.nav-item{font-size:12px;color:rgba(255,255,255,0.55);cursor:pointer;padding:4px 0;border-bottom:1.5px solid transparent;transition:all 0.15s}
+.nav-item.active{color:#fff;border-bottom-color:rgba(255,255,255,0.85)}
+.sound-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.5rem}
+.sound-card{border:1px solid rgba(255,255,255,0.25);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;background:rgba(255,255,255,0.1);transition:all 0.15s}
+.sound-card:hover{background:rgba(255,255,255,0.18)}
+.sound-card.active,.sound-card.playing{border:1.5px solid rgba(255,255,255,0.9);background:rgba(255,255,255,0.22)}
+.sound-icon{font-size:24px;margin-bottom:6px;display:block}
+.sound-name{font-size:12px;color:rgba(255,255,255,0.75)}
+.sound-card.active .sound-name,.sound-card.playing .sound-name{color:#fff;font-weight:500}
+.vol-row{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;padding:0 4px}
+.vol-label{font-size:13px;color:rgba(255,255,255,0.75);white-space:nowrap}
+.vol-row input[type=range]{flex:1;accent-color:rgba(255,255,255,0.9);cursor:pointer}
+.vol-val{font-size:13px;color:rgba(255,255,255,0.75);min-width:28px;text-align:right}
+.play-indicator{text-align:center;font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:1rem;height:18px}
+.breathe-guide{text-align:center;font-size:14px;color:rgba(255,255,255,0.9);margin-bottom:1rem;height:20px}
+.breathing-ring{width:200px;height:200px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;border:1.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.1);position:relative;overflow:hidden}
+.breath-fill{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.2);transition:height 4s ease-in-out}
+.breath-text{position:relative;z-index:1;font-size:16px;color:rgba(255,255,255,0.9)}
+.record-list{display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem;max-height:300px;overflow-y:auto}
+.record-item{padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1)}
+.record-top{display:flex;align-items:center;justify-content:space-between}
+.record-date{font-size:13px;color:rgba(255,255,255,0.75)}
+.record-dur{font-size:13px;font-weight:500;color:#fff}
+.streak-row{display:flex;gap:8px;justify-content:center;margin-bottom:1.5rem}
+.streak-day{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.25)}
+.streak-day.done{background:rgba(255,255,255,0.88);color:#333;border-color:transparent;font-weight:500}
+.streak-day.today{border:1.5px solid rgba(255,255,255,0.7)}
+.empty{text-align:center;font-size:14px;color:rgba(255,255,255,0.45);padding:2.5rem 0}
+.bell-note{text-align:center;font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:0.5rem}
+.stats-row{display:flex;gap:8px;justify-content:center;margin-bottom:1.5rem}
+.stat-box{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);text-align:center}
+.stat-val{font-size:20px;font-weight:500;color:#fff}
+.stat-label{font-size:11px;color:rgba(255,255,255,0.55);margin-top:2px}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="bg-canvas"></canvas>
+  <div id="overlay"></div>
+  <div id="content">
+    <div id="screen-timer" class="screen active">
+      <p class="sub">今日も瞑想しましょう</p>
+      <div class="timer-circle">
+        <div class="timer-display" id="timer-display">10:00</div>
+        <div class="timer-label" id="timer-status">準備完了</div>
+      </div>
+      <div class="duration-ctrl">
+        <button class="dur-adj" onclick="adjustMin(-1)">－</button>
+        <div class="dur-display" id="dur-display">10 分</div>
+        <button class="dur-adj" onclick="adjustMin(1)">＋</button>
+      </div>
+      <div class="dur-slider-row">
+        <span class="dur-hint">1</span>
+        <input type="range" min="1" max="60" value="10" step="1" id="dur-slider" oninput="setDurationSlider(this.value)">
+        <span class="dur-hint">60分</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn-main" id="start-btn" onclick="toggleTimer()">開始</button>
+        <button class="btn-sec" onclick="resetTimer()">リセット</button>
+      </div>
+      <div class="nav">
+        <div class="nav-item active" onclick="showScreen('timer')">タイマー</div>
+        <div class="nav-item" onclick="showScreen('sound')">サウンド</div>
+        <div class="nav-item" onclick="showScreen('breath')">呼吸</div>
+        <div class="nav-item" onclick="showScreen('log')">記録</div>
+      </div>
+    </div>
+
+    <div id="screen-sound" class="screen">
+      <p class="sub">BGMと背景を選んでください</p>
+      <div class="sound-grid">
+        <div class="sound-card active" data-sound="none" onclick="selectSound('none')"><span class="sound-icon">⬜</span><div class="sound-name">なし</div></div>
+        <div class="sound-card" data-sound="forest" onclick="selectSound('forest')"><span class="sound-icon">🌿</span><div class="sound-name">森林</div></div>
+        <div class="sound-card" data-sound="ocean" onclick="selectSound('ocean')"><span class="sound-icon">🌊</span><div class="sound-name">波の音</div></div>
+        <div class="sound-card" data-sound="river" onclick="selectSound('river')"><span class="sound-icon">💧</span><div class="sound-name">川の音</div></div>
+        <div class="sound-card" data-sound="rain" onclick="selectSound('rain')"><span class="sound-icon">🌧</span><div class="sound-name">雨の音</div></div>
+        <div class="sound-card" data-sound="fire" onclick="selectSound('fire')"><span class="sound-icon">🔥</span><div class="sound-name">焚き火</div></div>
+      </div>
+      <div class="vol-row">
+        <span class="vol-label">音量</span>
+        <input type="range" min="0" max="100" value="50" step="1" id="vol-slider" oninput="setVolume(this.value)">
+        <span class="vol-val" id="vol-val">50</span>
+      </div>
+      <div class="play-indicator" id="play-indicator">選択すると背景が変わります</div>
+      <div class="btn-row">
+        <button class="btn-main" id="sound-play-btn" onclick="toggleSoundPlay()">試聴</button>
+      </div>
+      <div class="nav">
+        <div class="nav-item" onclick="showScreen('timer')">タイマー</div>
+        <div class="nav-item active" onclick="showScreen('sound')">サウンド</div>
+        <div class="nav-item" onclick="showScreen('breath')">呼吸</div>
+        <div class="nav-item" onclick="showScreen('log')">記録</div>
+      </div>
+    </div>
+
+    <div id="screen-breath" class="screen">
+      <p class="sub">4-4-4 呼吸法</p>
+      <div class="breathe-guide" id="breath-guide">開始を押してください</div>
+      <div class="breathing-ring">
+        <div class="breath-fill" id="breath-fill" style="height:0%"></div>
+        <div class="breath-text" id="breath-text">◯</div>
+      </div>
+      <p style="text-align:center;font-size:12px;color:rgba(255,255,255,0.45);margin:0.75rem 0 1.5rem">吸う 4秒 → 止める 4秒 → 吐く 4秒</p>
+      <div class="btn-row">
+        <button class="btn-main" id="breath-btn" onclick="toggleBreath()">開始</button>
+      </div>
+      <div class="nav">
+        <div class="nav-item" onclick="showScreen('timer')">タイマー</div>
+        <div class="nav-item" onclick="showScreen('sound')">サウンド</div>
+        <div class="nav-item active" onclick="showScreen('breath')">呼吸</div>
+        <div class="nav-item" onclick="showScreen('log')">記録</div>
+      </div>
+    </div>
+
+    <div id="screen-log" class="screen">
+      <p class="sub">瞑想の記録</p>
+      <div class="streak-row" id="streak-row"></div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val" id="stat-total">0</div><div class="stat-label">合計回数</div></div>
+        <div class="stat-box"><div class="stat-val" id="stat-min">0</div><div class="stat-label">合計分数</div></div>
+        <div class="stat-box"><div class="stat-val" id="stat-streak">0</div><div class="stat-label">連続日数</div></div>
+      </div>
+      <div class="record-list" id="record-list"></div>
+      <div class="nav">
+        <div class="nav-item" onclick="showScreen('timer')">タイマー</div>
+        <div class="nav-item" onclick="showScreen('sound')">サウンド</div>
+        <div class="nav-item" onclick="showScreen('breath')">呼吸</div>
+        <div class="nav-item active" onclick="showScreen('log')">記録</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var canvas = document.getElementById('bg-canvas');
+var ctx2d = canvas.getContext('2d');
+var animT = 0, currentSound = 'none';
+
+function drawSunrise(t, w, h) {
+  var skyY = h * 0.62;
+  ctx2d.fillStyle = '#1a3a5c'; ctx2d.fillRect(0, 0, w, h);
+  var layers = [{y:0,ht:h*0.25,c:'rgba(40,60,100,1)'},{y:h*0.18,ht:h*0.2,c:'rgba(100,80,120,0.7)'},{y:h*0.3,ht:h*0.18,c:'rgba(200,100,80,0.55)'},{y:h*0.42,ht:h*0.15,c:'rgba(240,150,60,0.6)'},{y:h*0.52,ht:h*0.12,c:'rgba(255,200,80,0.5)'}];
+  for (var li = 0; li < layers.length; li++) { ctx2d.fillStyle = layers[li].c; ctx2d.fillRect(0, layers[li].y, w, layers[li].ht); }
+  var sp = 0.18 + Math.sin(t * 0.00004) * 0.04, sunX = w * 0.5, sunY = skyY - skyY * sp;
+  for (var i = 0; i < 12; i++) {
+    var angle = (i / 12) * Math.PI * 2 + t * 0.0001, rl = 60 + Math.sin(t * 0.0008 + i) * 15;
+    ctx2d.beginPath(); ctx2d.moveTo(sunX, sunY); ctx2d.lineTo(sunX + Math.cos(angle) * rl, sunY + Math.sin(angle) * rl);
+    ctx2d.strokeStyle = 'rgba(255,220,100,' + (0.06 + Math.sin(t * 0.001 + i) * 0.02) + ')'; ctx2d.lineWidth = 8 + Math.sin(i) * 4; ctx2d.stroke();
+  }
+  var sr = 22 + Math.sin(t * 0.0005) * 1.5;
+  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sr, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,240,160,0.95)'; ctx2d.fill();
+  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sr * 2.2, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,200,80,0.15)'; ctx2d.fill();
+  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sr * 3.5, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,160,60,0.07)'; ctx2d.fill();
+  ctx2d.fillStyle = '#1a3a4a'; ctx2d.fillRect(0, skyY, w, h - skyY);
+  for (var i = 0; i < 8; i++) {
+    var wy = skyY + 12 + i * ((h - skyY - 12) / 8);
+    ctx2d.beginPath(); ctx2d.moveTo(0, wy);
+    for (var x = 0; x <= w; x += 4) ctx2d.lineTo(x, wy + Math.sin(x * 0.03 + t * 0.001 + i * 0.7) * (2 + i * 0.5));
+    ctx2d.strokeStyle = 'rgba(255,200,100,' + (0.06 - i * 0.005) + ')'; ctx2d.lineWidth = 1; ctx2d.stroke();
+  }
+  var rg = ctx2d.createLinearGradient(sunX - 20, skyY, sunX + 20, h);
+  rg.addColorStop(0, 'rgba(255,200,80,0.18)'); rg.addColorStop(1, 'rgba(255,200,80,0)');
+  ctx2d.fillStyle = rg; ctx2d.fillRect(sunX - 18, skyY, 36, h - skyY);
+  var mts = [[0,0],[0.08,0.14],[0.18,0.06],[0.28,0.18],[0.38,0.08],[0.5,0.22],[0.62,0.1],[0.72,0.2],[0.82,0.07],[0.92,0.16],[1,0.05],[1,0]];
+  ctx2d.fillStyle = 'rgba(30,50,70,0.7)'; ctx2d.beginPath(); ctx2d.moveTo(0, skyY);
+  for (var mi = 0; mi < mts.length; mi++) ctx2d.lineTo(mts[mi][0] * w, skyY - mts[mi][1] * skyY * 0.55);
+  ctx2d.closePath(); ctx2d.fill();
+  ctx2d.fillStyle = 'rgba(20,35,25,0.85)'; ctx2d.beginPath(); ctx2d.moveTo(0, h); ctx2d.lineTo(0, skyY + 2);
+  for (var x = 0; x <= w; x += 6) ctx2d.lineTo(x, skyY + 2 + Math.sin(x * 0.05 + t * 0.0004) * 1.5);
+  ctx2d.lineTo(w, h); ctx2d.closePath(); ctx2d.fill();
+  for (var i = 0; i < 18; i++) {
+    var gx = w * (i / 17), gy = skyY + 2, gh = 8 + Math.sin(i * 1.7) * 5, sw = Math.sin(t * 0.0006 + i * 0.8) * 2;
+    ctx2d.beginPath(); ctx2d.moveTo(gx, gy + 2); ctx2d.quadraticCurveTo(gx + sw, gy - gh * 0.5, gx + sw * 1.5, gy - gh);
+    ctx2d.strokeStyle = 'rgba(30,55,30,0.7)'; ctx2d.lineWidth = 1.5; ctx2d.stroke();
+  }
+  for (var i = 0; i < 18; i++) {
+    var sx = (Math.sin(i * 2.3) * 0.5 + 0.5) * w, sy = (Math.cos(i * 1.7) * 0.5 + 0.5) * skyY * 0.5;
+    var al = Math.max(0, 0.3 - sp * 1.2 + Math.sin(t * 0.001 + i) * 0.05);
+    ctx2d.beginPath(); ctx2d.arc(sx, sy, 1, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,255,255,' + al + ')'; ctx2d.fill();
+  }
+}
+
+var themes = {
+  none: { draw: function(t,w,h){ drawSunrise(t,w,h); } },
+  forest: { draw: function(t,w,h){
+    ctx2d.fillStyle='#1a3a1a'; ctx2d.fillRect(0,0,w,h);
+    ctx2d.fillStyle='#0d2b0d'; ctx2d.fillRect(0,h*0.55,w,h*0.45);
+    var trees=[[40,1.2,0],[90,0.8,1],[150,1.4,2],[220,0.9,3],[290,1.1,4],[360,0.7,5],[400,1.3,1.5]];
+    for (var ti=0; ti<trees.length; ti++) {
+      var tx=trees[ti][0], tsc=trees[ti][1], tph=trees[ti][2];
+      var sw=Math.sin(t*0.0006+tph)*4*tsc;
+      ctx2d.save(); ctx2d.translate(tx+sw*0.3,h*0.55);
+      ctx2d.fillStyle='#1e1e0a'; ctx2d.fillRect(-4*tsc,-80*tsc,8*tsc,80*tsc);
+      var buds=[[0,-80,28],[0,-110,24],[0,-135,20],[0,-156,16]];
+      for (var bi=0; bi<buds.length; bi++) {
+        ctx2d.beginPath(); ctx2d.arc(buds[bi][0]*tsc+sw,buds[bi][1]*tsc,buds[bi][2]*tsc,0,Math.PI*2);
+        ctx2d.fillStyle='hsl('+(120+Math.sin(t*0.0004+tph)*5)+','+(40+tsc*10)+'%,'+(18+tsc*8)+'%)'; ctx2d.fill();
+      }
+      ctx2d.restore();
+    }
+    for (var i=0; i<15; i++) {
+      var bx=(Math.sin(i*1.3+t*0.0004)*0.5+0.5)*w, by=(Math.cos(i*2.1+t*0.0003)*0.3+0.2)*h;
+      ctx2d.beginPath(); ctx2d.arc(bx,by,1.5,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(255,220,100,'+(0.4+Math.sin(t*0.002+i)*0.3)+')'; ctx2d.fill();
+    }
+  }},
+  ocean: { draw: function(t,w,h){
+    ctx2d.fillStyle='#0a1628'; ctx2d.fillRect(0,0,w,h);
+    ctx2d.fillStyle='#0d3060'; ctx2d.fillRect(0,0,w,h*0.45);
+    for (var i=0; i<5; i++) {
+      var y=h*(0.4+i*0.08)+Math.sin(t*0.0005+i)*8, amp=6+i*3;
+      ctx2d.beginPath(); ctx2d.moveTo(0,y);
+      for (var x=0; x<=w; x+=4) ctx2d.lineTo(x,y+Math.sin(x*0.022+t*0.0008+i*0.8)*amp+Math.cos(x*0.014+t*0.0005)*amp*0.5);
+      ctx2d.lineTo(w,h); ctx2d.lineTo(0,h); ctx2d.closePath();
+      ctx2d.fillStyle='rgba('+(10+i*5)+','+(40+i*15)+','+(95+i*10)+',0.6)'; ctx2d.fill();
+    }
+    for (var i=0; i<20; i++) {
+      var sx=(Math.sin(i*2.3+t*0.00015)*0.5+0.5)*w, sy=(Math.cos(i*1.7+t*0.0001)*0.3+0.1)*h;
+      ctx2d.beginPath(); ctx2d.arc(sx,sy,1,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(255,255,255,'+(0.2+Math.sin(i+t*0.001)*0.15)+')'; ctx2d.fill();
+    }
+  }},
+  river: { draw: function(t,w,h){
+    ctx2d.fillStyle='#1a2a10'; ctx2d.fillRect(0,0,w,h);
+    ctx2d.fillStyle='#0f1f08'; ctx2d.fillRect(0,0,w*0.22,h); ctx2d.fillRect(w*0.78,0,w*0.22,h);
+    ctx2d.fillStyle='#0a1f3a';
+    var rw=w*0.56, rx=w*0.22; ctx2d.fillRect(rx,0,rw,h);
+    for (var i=0; i<12; i++) {
+      var ry=h*(i/12)+Math.sin(t*0.0006+i)*6;
+      ctx2d.beginPath(); ctx2d.moveTo(rx,ry);
+      for (var x=rx; x<=rx+rw; x+=3) ctx2d.lineTo(x,ry+Math.sin(x*0.04+t*0.001+i)*3);
+      ctx2d.lineTo(rx+rw,ry+8); ctx2d.lineTo(rx,ry+8); ctx2d.closePath();
+      ctx2d.fillStyle='rgba(30,80,140,'+(0.15+Math.sin(i*0.5)*0.05)+')'; ctx2d.fill();
+    }
+    for (var i=0; i<6; i++) {
+      var lx=rx+rw*((i+0.5)/6), ly=(t*0.05+i*60)%h;
+      ctx2d.beginPath(); ctx2d.arc(lx,ly,2,0,Math.PI*2); ctx2d.fillStyle='rgba(255,255,255,0.25)'; ctx2d.fill();
+    }
+  }},
+  rain: { draw: function(t,w,h){
+    ctx2d.fillStyle='#1a1e28'; ctx2d.fillRect(0,0,w,h);
+    for (var i=0; i<5; i++) {
+      ctx2d.beginPath(); ctx2d.arc(w*(0.1+i*0.2)+Math.sin(t*0.0002+i)*20,h*0.2+Math.cos(t*0.0001+i)*30,80+i*20,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(80,90,120,0.18)'; ctx2d.fill();
+    }
+    for (var i=0; i<80; i++) {
+      var ph=(t*0.08+i*17)%h;
+      ctx2d.beginPath(); ctx2d.moveTo((Math.sin(i*3.7)*0.5+0.5)*w,ph); ctx2d.lineTo((Math.sin(i*3.7)*0.5+0.5)*w-1,ph+8+Math.sin(i*2.1)*4);
+      ctx2d.strokeStyle='rgba(180,200,230,'+(0.2+Math.sin(i*1.3)*0.1)+')'; ctx2d.lineWidth=0.5; ctx2d.stroke();
+    }
+    for (var i=0; i<12; i++) {
+      var pr=((t*0.05+i*20)%60);
+      if (pr<40) {
+        ctx2d.beginPath(); ctx2d.arc((Math.sin(i*2.9)*0.5+0.5)*w,h*0.75+Math.sin(i*1.7)*h*0.2,pr*0.4,0,Math.PI*2);
+        ctx2d.strokeStyle='rgba(150,180,220,'+(0.15*(1-pr/40))+')'; ctx2d.lineWidth=0.5; ctx2d.stroke();
+      }
+    }
+  }},
+  fire: { draw: function(t,w,h){
+    ctx2d.fillStyle='#100a04'; ctx2d.fillRect(0,0,w,h);
+    ctx2d.fillStyle='#0a0a0a'; ctx2d.fillRect(0,h*0.7,w,h*0.3);
+    var cx=w/2;
+    var flames=[[-60,0.5,0],[0,1,1],[50,0.6,2],[-30,0.7,3],[40,0.55,4]];
+    for (var fi=0; fi<flames.length; fi++) {
+      var ox=cx+flames[fi][0], fsc=flames[fi][1], fph=flames[fi][2], oy=h*0.72;
+      for (var l=0; l<6; l++) {
+        var fl=1-l/6, fw=(50+l*10)*fsc, fh=(80+l*20)*fsc, flk=Math.sin(t*0.003+fph+l)*8*fsc;
+        ctx2d.beginPath(); ctx2d.moveTo(ox,oy);
+        ctx2d.bezierCurveTo(ox-fw,oy-fh*0.3,ox-fw*0.4+flk,oy-fh*0.7,ox+flk*0.5,oy-fh);
+        ctx2d.bezierCurveTo(ox+fw*0.4+flk,oy-fh*0.7,ox+fw,oy-fh*0.3,ox,oy);
+        ctx2d.fillStyle='rgba(255,'+Math.floor(60+fl*120)+','+Math.floor(fl*30)+','+(0.12+fl*0.1)+')'; ctx2d.fill();
+      }
+    }
+    for (var i=0; i<25; i++) {
+      var et=(t*0.001+i*0.3)%1, ex=cx+Math.sin(i*2.1+t*0.002)*40, ey=h*0.72-et*h*0.4, er=2*(1-et);
+      if (er>0.2) {
+        ctx2d.beginPath(); ctx2d.arc(ex,ey,er,0,Math.PI*2);
+        ctx2d.fillStyle='rgba(255,'+(100+Math.sin(i)*80)+',0,'+(0.7*(1-et))+')'; ctx2d.fill();
+      }
+    }
+  }}
+};
+
+function resizeCanvas() { var app=document.getElementById('app'); canvas.width=app.offsetWidth; canvas.height=app.offsetHeight; }
+function animate(ts) { animT=ts; resizeCanvas(); (themes[currentSound]||themes.none).draw(animT,canvas.width,canvas.height); requestAnimationFrame(animate); }
+requestAnimationFrame(animate);
+
+var targetMin=10, duration=600, remaining=600, timerInterval=null, running=false;
+var records=[]; try { records=JSON.parse(localStorage.getItem('med_records_v1')||'[]'); } catch(e) {}
+var audioCtx=null, soundNodes={}, soundPlaying=false, masterGain=null, currentVolume=0.5, birdCallTimer=null;
+
+function getACtx() {
+  if (!audioCtx) { audioCtx=new(window.AudioContext||window.webkitAudioContext)(); masterGain=audioCtx.createGain(); masterGain.gain.value=currentVolume; masterGain.connect(audioCtx.destination); }
+  return audioCtx;
+}
+function makeNoiseBuf(sec) {
+  sec = sec || 3;
+  var c=getACtx(), len=c.sampleRate*sec, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+  for (var i=0; i<len; i++) d[i]=Math.random()*2-1;
+  return buf;
+}
+function makeFireBuf() {
+  var c=getACtx(), sr=c.sampleRate, len=sr*5, buf=c.createBuffer(1,len,sr), d=buf.getChannelData(0);
+  var i=0;
+  while (i<len) {
+    var ig=Math.random()<0.6;
+    var gap=ig?Math.floor(sr*(0.02+Math.random()*0.12)):Math.floor(sr*(0.1+Math.random()*0.5));
+    i+=gap; if(i>=len) break;
+    var amp=ig?0.04+Math.random()*0.06:0.08+Math.random()*0.15;
+    var sign=Math.random()<0.5?1:-1;
+    var dMs=ig?(1+Math.random()*3):(3+Math.random()*8);
+    var dLen=Math.floor(sr*dMs*0.001);
+    for (var j=0; j<dLen&&i+j<len; j++) d[i+j]=sign*amp*Math.exp(-j/(dLen*0.25));
+    i+=dLen;
+  }
+  return buf;
+}
+
+function playBirdCall() {
+  if (!soundPlaying||currentSound!=='forest') return;
+  var ctx=getACtx();
+  var num=2+Math.floor(Math.random()*3);
+  var base=2200+Math.random()*800;
+  for (var n=0; n<num; n++) {
+    var st=ctx.currentTime+n*0.12+Math.random()*0.04;
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(masterGain); o.type='sine';
+    o.frequency.setValueAtTime(base*(1+n*0.05),st);
+    o.frequency.linearRampToValueAtTime(base*1.15,st+0.04);
+    o.frequency.linearRampToValueAtTime(base*0.95,st+0.1);
+    g.gain.setValueAtTime(0,st); g.gain.linearRampToValueAtTime(0.06+Math.random()*0.04,st+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,st+0.12);
+    o.start(st); o.stop(st+0.15);
+  }
+  birdCallTimer=setTimeout(playBirdCall,(8+Math.random()*17)*1000);
+}
+function stopBirdCallTimer() { clearTimeout(birdCallTimer); birdCallTimer=null; }
+
+function stopAllSounds() {
+  stopBirdCallTimer();
+  var keys=Object.keys(soundNodes);
+  for (var k=0; k<keys.length; k++) { try { soundNodes[keys[k]].stop(); } catch(e) {} }
+  soundNodes={}; soundPlaying=false;
+  document.getElementById('sound-play-btn').textContent='試聴';
+  document.getElementById('play-indicator').textContent=currentSound==='none'?'選択すると背景が変わります':'停止中';
+  var cards=document.querySelectorAll('.sound-card');
+  for (var i=0; i<cards.length; i++) cards[i].classList.remove('playing');
+}
+
+function playSound(type) {
+  if (type==='none') { stopAllSounds(); return; }
+  var ctx=getACtx(); if (ctx.state==='suspended') ctx.resume();
+  stopAllSounds(); soundPlaying=true;
+  document.getElementById('sound-play-btn').textContent='停止';
+  var card=document.querySelector('[data-sound="'+type+'"]'); if (card) card.classList.add('playing');
+  var buf=makeNoiseBuf();
+
+  if (type==='forest') {
+    var s=ctx.createBufferSource(); s.buffer=buf; s.loop=true;
+    var lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=600; lp.Q.value=0.4;
+    var hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=200;
+    var g=ctx.createGain(); g.gain.value=0.12;
+    var lfo=ctx.createOscillator(); lfo.frequency.value=0.1;
+    var lg=ctx.createGain(); lg.gain.value=200;
+    lfo.connect(lg); lg.connect(lp.frequency); s.connect(lp); lp.connect(hp); hp.connect(g); g.connect(masterGain);
+    lfo.start(); s.start(); soundNodes.main=s; soundNodes.lfo=lfo;
+    var s2=ctx.createBufferSource(); s2.buffer=buf; s2.loop=true;
+    var bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2800; bp.Q.value=12;
+    var bp2=ctx.createBiquadFilter(); bp2.type='bandpass'; bp2.frequency.value=3800; bp2.Q.value=10;
+    var gB=ctx.createGain(); gB.gain.value=0.04;
+    var bLfo=ctx.createOscillator(); bLfo.frequency.value=0.4;
+    var bLg=ctx.createGain(); bLg.gain.value=0.035;
+    bLfo.connect(bLg); bLg.connect(gB.gain); s2.connect(bp); bp.connect(bp2); bp2.connect(gB); gB.connect(masterGain);
+    bLfo.start(); s2.start(); soundNodes.bird=s2; soundNodes.birdLfo=bLfo;
+    birdCallTimer=setTimeout(playBirdCall,(3+Math.random()*3)*1000);
+
+  } else if (type==='ocean') {
+    var B=8;
+    var s=ctx.createBufferSource(); s.buffer=buf; s.loop=true;
+    var lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=500; lp.Q.value=0.3;
+    var amp=ctx.createGain(); amp.gain.value=0.3;
+    var lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=1/B;
+    var lg=ctx.createGain(); lg.gain.value=0.28;
+    lfo.connect(lg); lg.connect(amp.gain); s.connect(lp); lp.connect(amp); amp.connect(masterGain);
+    lfo.start(); s.start(); soundNodes.main=s; soundNodes.lfo=lfo;
+    var s2=ctx.createBufferSource(); s2.buffer=buf; s2.loop=true;
+    var lp2=ctx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=280;
+    var amp2=ctx.createGain(); amp2.gain.value=0.18;
+    var lfo2=ctx.createOscillator(); lfo2.type='sine'; lfo2.frequency.value=1/B;
+    var lg2=ctx.createGain(); lg2.gain.value=0.15;
+    lfo2.connect(lg2); lg2.connect(amp2.gain); s2.connect(lp2); lp2.connect(amp2); amp2.connect(masterGain);
+    lfo2.start(ctx.currentTime+B/2); s2.start(); soundNodes.wave2=s2; soundNodes.lfo2=lfo2;
+
+  } else if (type==='river') {
+    var s=ctx.createBufferSource(); s.buffer=buf; s.loop=true;
+    var hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=300;
+    var lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2200;
+    var g=ctx.createGain(); g.gain.value=0.13;
+    var lfo=ctx.createOscillator(); lfo.frequency.value=0.35;
+    var lg=ctx.createGain(); lg.gain.value=300;
+    lfo.connect(lg); lg.connect(hp.frequency); s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(masterGain);
+    lfo.start(); s.start(); soundNodes.main=s; soundNodes.lfo=lfo;
+    var s2=ctx.createBufferSource(); s2.buffer=buf; s2.loop=true;
+    var lp2=ctx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=800;
+    var g2=ctx.createGain(); g2.gain.value=0.06;
+    s2.connect(lp2); lp2.connect(g2); g2.connect(masterGain); s2.start(); soundNodes.far=s2;
+
+  } else if (type==='rain') {
+    var s=ctx.createBufferSource(); s.buffer=buf; s.loop=true;
+    var lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2000; lp.Q.value=0.5;
+    var hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=600;
+    var g=ctx.createGain(); g.gain.value=0.18;
+    s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(masterGain); s.start(); soundNodes.main=s;
+    var s2=ctx.createBufferSource(); s2.buffer=buf; s2.loop=true;
+    var hp2=ctx.createBiquadFilter(); hp2.type='highpass'; hp2.frequency.value=5000;
+    var lp2=ctx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=9000;
+    var g2=ctx.createGain(); g2.gain.value=0.04;
+    s2.connect(hp2); hp2.connect(lp2); lp2.connect(g2); g2.connect(masterGain); s2.start(); soundNodes.drop=s2;
+
+  } else if (type==='fire') {
+    var sB=ctx.createBufferSource(); sB.buffer=buf; sB.loop=true;
+    var lpB=ctx.createBiquadFilter(); lpB.type='lowpass'; lpB.frequency.value=220; lpB.Q.value=0.5;
+    var gB=ctx.createGain(); gB.gain.value=0.06;
+    var lfoB=ctx.createOscillator(); lfoB.frequency.value=0.2;
+    var lgB=ctx.createGain(); lgB.gain.value=60;
+    lfoB.connect(lgB); lgB.connect(lpB.frequency); sB.connect(lpB); lpB.connect(gB); gB.connect(masterGain);
+    lfoB.start(); sB.start(); soundNodes.base=sB; soundNodes.lfoBase=lfoB;
+    var sG=ctx.createBufferSource(); sG.buffer=buf; sG.loop=true;
+    var hpG=ctx.createBiquadFilter(); hpG.type='highpass'; hpG.frequency.value=2000;
+    var lpG=ctx.createBiquadFilter(); lpG.type='lowpass'; lpG.frequency.value=6000;
+    var gG=ctx.createGain(); gG.gain.value=0.04;
+    sG.connect(hpG); hpG.connect(lpG); lpG.connect(gG); gG.connect(masterGain); sG.start(); soundNodes.grass=sG;
+    var fb=makeFireBuf();
+    var sC=ctx.createBufferSource(); sC.buffer=fb; sC.loop=true;
+    var hpC=ctx.createBiquadFilter(); hpC.type='highpass'; hpC.frequency.value=500;
+    var lpC=ctx.createBiquadFilter(); lpC.type='lowpass'; lpC.frequency.value=6000;
+    var gC=ctx.createGain(); gC.gain.value=0.85;
+    sC.connect(hpC); hpC.connect(lpC); lpC.connect(gC); gC.connect(masterGain); sC.start(); soundNodes.crack=sC;
+    var sM=ctx.createBufferSource(); sM.buffer=buf; sM.loop=true;
+    var bpM=ctx.createBiquadFilter(); bpM.type='bandpass'; bpM.frequency.value=600; bpM.Q.value=1.5;
+    var gM=ctx.createGain(); gM.gain.value=0.05;
+    sM.connect(bpM); bpM.connect(gM); gM.connect(masterGain); sM.start(); soundNodes.mid=sM;
+  }
+
+  var labels={forest:'森林の音を再生中',ocean:'波の音を再生中',river:'川の音を再生中',rain:'雨の音を再生中',fire:'焚き火の音を再生中'};
+  document.getElementById('play-indicator').textContent=labels[type]||'';
+}
+
+function selectSound(type) {
+  currentSound=type;
+  var cards=document.querySelectorAll('.sound-card');
+  for (var i=0; i<cards.length; i++) { cards[i].classList.toggle('active',cards[i].dataset.sound===type); cards[i].classList.remove('playing'); }
+  if (soundPlaying) playSound(type);
+  else document.getElementById('play-indicator').textContent=type==='none'?'選択すると背景が変わります':'「試聴」で音を確認できます';
+}
+function toggleSoundPlay() { if (soundPlaying) stopAllSounds(); else playSound(currentSound); }
+function setVolume(v) { currentVolume=v/100; document.getElementById('vol-val').textContent=v; if (masterGain) masterGain.gain.value=currentVolume; }
+function showScreen(name) {
+  var screens=document.querySelectorAll('.screen');
+  for (var i=0; i<screens.length; i++) screens[i].classList.remove('active');
+  document.getElementById('screen-'+name).classList.add('active');
+  var navItems=document.querySelectorAll('.nav-item');
+  var names=['timer','sound','breath','log'];
+  for (var i=0; i<navItems.length; i++) navItems[i].classList.toggle('active',names[i]===name);
+  if (name==='log') renderLog();
+}
+function syncDurationUI() { document.getElementById('dur-display').textContent=targetMin+' 分'; document.getElementById('dur-slider').value=targetMin; }
+function adjustMin(d) {
+  if (running) return;
+  targetMin=Math.max(1,Math.min(60,targetMin+d)); duration=targetMin*60; remaining=duration;
+  syncDurationUI(); updateDisplay();
+}
+function setDurationSlider(v) {
+  if (running) return;
+  targetMin=parseInt(v); duration=targetMin*60; remaining=duration;
+  document.getElementById('dur-display').textContent=targetMin+' 分'; updateDisplay();
+}
+function updateDisplay() { var m=Math.floor(remaining/60), s=remaining%60; document.getElementById('timer-display').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+
+function playBell() {
+  try {
+    var ctx=getACtx(); var now=ctx.currentTime;
+    var ns=[587,784,698,880];
+    for (var i=0; i<ns.length; i++) {
+      var pairs=[[ns[i],0.18,3.0],[ns[i]*2.76,0.06,1.4]];
+      for (var j=0; j<pairs.length; j++) {
+        var freq=pairs[j][0], amp=pairs[j][1], decay=pairs[j][2];
+        var o=ctx.createOscillator(), gn=ctx.createGain();
+        o.connect(gn); gn.connect(ctx.destination);
+        o.type='sine'; o.frequency.value=freq;
+        var st=now+i*0.28;
+        gn.gain.setValueAtTime(0,st); gn.gain.linearRampToValueAtTime(amp,st+0.01);
+        gn.gain.exponentialRampToValueAtTime(0.001,st+decay);
+        o.start(st); o.stop(st+decay+0.1);
+      }
+    }
+  } catch(e) {}
+}
+
+function toggleTimer() {
+  if (!running) {
+    running=true; document.getElementById('start-btn').textContent='一時停止'; document.getElementById('timer-status').textContent='瞑想中...';
+    if (currentSound!=='none'&&!soundPlaying) playSound(currentSound);
+    timerInterval=setInterval(function() {
+      remaining--;
+      updateDisplay();
+      if (remaining<=0) {
+        clearInterval(timerInterval); running=false; stopAllSounds(); playBell();
+        document.getElementById('timer-status').textContent='完了！お疲れさまでした';
+        document.getElementById('start-btn').textContent='開始';
+        saveRecord(targetMin);
+      }
+    }, 1000);
+  } else {
+    clearInterval(timerInterval); running=false;
+    document.getElementById('start-btn').textContent='再開'; document.getElementById('timer-status').textContent='一時停止中';
+  }
+}
+function resetTimer() { clearInterval(timerInterval); running=false; remaining=duration; updateDisplay(); document.getElementById('start-btn').textContent='開始'; document.getElementById('timer-status').textContent='準備完了'; }
+
+function saveRecord(min) {
+  var now=new Date();
+  var ds=now.getFullYear()+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0');
+  var ts=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  records.unshift({date:ds,time:ts,min:min});
+  if (records.length>60) records=records.slice(0,60);
+  try { localStorage.setItem('med_records_v1',JSON.stringify(records)); } catch(e) {}
+}
+function calcStreak() {
+  if (records.length===0) return 0;
+  var today=new Date(), streak=0, d=new Date(today);
+  while (true) {
+    var ds=d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
+    var found=false;
+    for (var i=0; i<records.length; i++) { if (records[i].date===ds) { found=true; break; } }
+    if (found) { streak++; d.setDate(d.getDate()-1); } else break;
+  }
+  return streak;
+}
+function renderLog() {
+  var days=['日','月','火','水','木','金','土'], today=new Date();
+  var sr=document.getElementById('streak-row'); sr.innerHTML='';
+  for (var i=6; i>=0; i--) {
+    var d=new Date(today); d.setDate(today.getDate()-i);
+    var ds=d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
+    var found=false; for (var ri=0; ri<records.length; ri++) { if (records[ri].date===ds) { found=true; break; } }
+    var el=document.createElement('div');
+    el.className='streak-day'+(found?' done':'')+(i===0?' today':'');
+    el.textContent=days[d.getDay()]; sr.appendChild(el);
+  }
+  document.getElementById('stat-total').textContent=records.length;
+  var totalMin=0; for (var i=0; i<records.length; i++) totalMin+=records[i].min;
+  document.getElementById('stat-min').textContent=totalMin;
+  document.getElementById('stat-streak').textContent=calcStreak();
+  var list=document.getElementById('record-list');
+  if (records.length===0) { list.innerHTML='<div class="empty">まだ記録がありません</div>'; return; }
+  var html='';
+  var shown=records.slice(0,20);
+  for (var i=0; i<shown.length; i++) {
+    html+='<div class="record-item"><div class="record-top"><div class="record-date">'+shown[i].date+(shown[i].time?' — '+shown[i].time:'')+'</div><div class="record-dur">'+shown[i].min+'分</div></div></div>';
+  }
+  list.innerHTML=html;
+}
+
+var breathRunning=false, breathInterval=null;
+var breathPhases=[{label:'吸う',duration:4000,fill:'100%'},{label:'止める',duration:4000,fill:'100%'},{label:'吐く',duration:4000,fill:'0%'}];
+function toggleBreath() {
+  if (!breathRunning) {
+    breathRunning=true; document.getElementById('breath-btn').textContent='停止'; runBreathPhase(0);
+  } else {
+    breathRunning=false; clearTimeout(breathInterval);
+    document.getElementById('breath-btn').textContent='開始';
+    document.getElementById('breath-guide').textContent='開始を押してください';
+    var f=document.getElementById('breath-fill'); f.style.transition='height 0.3s'; f.style.height='0%';
+    document.getElementById('breath-text').textContent='◯';
+  }
+}
+function runBreathPhase(idx) {
+  if (!breathRunning) return;
+  var p=breathPhases[idx];
+  document.getElementById('breath-guide').textContent=p.label;
+  document.getElementById('breath-text').textContent=p.label;
+  var f=document.getElementById('breath-fill');
+  f.style.transition='height '+p.duration+'ms ease-in-out'; f.style.height=p.fill;
+  breathInterval=setTimeout(function(){ runBreathPhase((idx+1)%3); }, p.duration);
+}
+
+updateDisplay(); syncDurationUI(); selectSound('none');
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+</script>
+</body>
+</html>
