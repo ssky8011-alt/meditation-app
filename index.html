@@ -19,7 +19,9 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
 #content{position:relative;z-index:2;padding:2rem 1.5rem;min-height:580px;display:flex;flex-direction:column}
 .screen{display:none;flex-direction:column;flex:1}.screen.active{display:flex}
 .sub{font-size:13px;color:rgba(255,255,255,0.85);text-align:center;margin-bottom:1.5rem}
-.timer-circle{width:200px;height:200px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.5);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 1rem;background:rgba(255,255,255,0.1)}
+.timer-circle{width:200px;height:200px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.5);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 1rem;background:rgba(255,255,255,0.1);position:relative;overflow:hidden}
+.breath-ring{position:absolute;border-radius:50%;background:rgba(255,255,255,0.12);width:60%;height:60%;transition:width 4s ease-in-out,height 4s ease-in-out,opacity 4s ease-in-out;opacity:0}
+.breath-ring.expand{width:95%;height:95%;opacity:1}
 .timer-display{font-size:42px;font-weight:300;color:#fff;letter-spacing:3px}
 .timer-label{font-size:12px;color:rgba(255,255,255,0.65);margin-top:6px}
 .duration-ctrl{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:0.6rem}
@@ -50,6 +52,11 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
 .vol-val{font-size:13px;color:rgba(255,255,255,0.75);min-width:28px;text-align:right}
 .play-indicator{text-align:center;font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:1rem;height:18px}
 .breathe-guide{text-align:center;font-size:14px;color:rgba(255,255,255,0.9);margin-bottom:1rem;height:20px}
+.breath-settings{display:flex;flex-direction:column;gap:8px;margin:1rem 0;padding:0 4px}
+.breath-setting-row{display:flex;align-items:center;gap:10px}
+.breath-setting-label{font-size:13px;color:rgba(255,255,255,0.75);min-width:44px}
+.breath-setting-row input{flex:1;accent-color:rgba(255,255,255,0.9);cursor:pointer}
+.breath-setting-val{font-size:13px;color:rgba(255,255,255,0.75);min-width:28px;text-align:right}
 .breathing-ring{width:200px;height:200px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;border:1.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.1);position:relative;overflow:hidden}
 .breath-fill{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.2);transition:height 4s ease-in-out}
 .breath-text{position:relative;z-index:1;font-size:16px;color:rgba(255,255,255,0.9)}
@@ -77,7 +84,8 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
   <div id="content">
     <div id="screen-timer" class="screen active">
       <p class="sub">今日も瞑想しましょう</p>
-      <div class="timer-circle">
+      <div class="timer-circle" id="timer-circle">
+        <div class="breath-ring" id="breath-ring"></div>
         <div class="timer-display" id="timer-display">10:00</div>
         <div class="timer-label" id="timer-status">準備完了</div>
       </div>
@@ -131,13 +139,29 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
     </div>
 
     <div id="screen-breath" class="screen">
-      <p class="sub">4-4-4 呼吸法</p>
+      <p class="sub">呼吸法</p>
       <div class="breathe-guide" id="breath-guide">開始を押してください</div>
       <div class="breathing-ring">
         <div class="breath-fill" id="breath-fill" style="height:0%"></div>
         <div class="breath-text" id="breath-text">◯</div>
       </div>
-      <p style="text-align:center;font-size:12px;color:rgba(255,255,255,0.45);margin:0.75rem 0 1.5rem">吸う 4秒 → 止める 4秒 → 吐く 4秒</p>
+      <div class="breath-settings">
+        <div class="breath-setting-row">
+          <span class="breath-setting-label">吸う</span>
+          <input type="range" min="1" max="10" value="4" step="1" id="inhale-slider" oninput="updateBreathSettings()">
+          <span class="breath-setting-val" id="inhale-val">4秒</span>
+        </div>
+        <div class="breath-setting-row">
+          <span class="breath-setting-label">止める</span>
+          <input type="range" min="0" max="10" value="4" step="1" id="hold-slider" oninput="updateBreathSettings()">
+          <span class="breath-setting-val" id="hold-val">4秒</span>
+        </div>
+        <div class="breath-setting-row">
+          <span class="breath-setting-label">吐く</span>
+          <input type="range" min="1" max="10" value="4" step="1" id="exhale-slider" oninput="updateBreathSettings()">
+          <span class="breath-setting-val" id="exhale-val">4秒</span>
+        </div>
+      </div>
       <div class="btn-row">
         <button class="btn-main" id="breath-btn" onclick="toggleBreath()">開始</button>
       </div>
@@ -533,15 +557,64 @@ function playBell() {
   } catch(e) {}
 }
 
+var breathAnimInterval=null;
+var breathPhaseTimer=null;
+var breathStep=0; // 0=吸う 1=止める 2=吐く
+
+function startBreathAnim(){
+  stopBreathAnim();
+  breathStep=0;
+  runBreathAnim();
+}
+
+function runBreathAnim(){
+  var ring=document.getElementById('breath-ring');
+  var status=document.getElementById('timer-status');
+  if(!ring) return;
+  // 呼吸画面の設定を使う
+  var inhale=inhaleTime*1000;
+  var hold=holdTime*1000;
+  var exhale=exhaleTime*1000;
+
+  if(breathStep===0){
+    // 吸う：膨らむ
+    ring.style.transition='width '+inhaleTime+'s ease-in-out,height '+inhaleTime+'s ease-in-out,opacity '+inhaleTime+'s ease-in-out';
+    ring.classList.add('expand');
+    status.textContent='吸う...';
+    breathPhaseTimer=setTimeout(function(){
+      if(hold>0){ breathStep=1; } else { breathStep=2; }
+      runBreathAnim();
+    }, inhale);
+  } else if(breathStep===1){
+    // 止める：そのまま
+    status.textContent='止める...';
+    breathPhaseTimer=setTimeout(function(){breathStep=2;runBreathAnim();}, hold);
+  } else {
+    // 吐く：縮む
+    ring.style.transition='width '+exhaleTime+'s ease-in-out,height '+exhaleTime+'s ease-in-out,opacity '+exhaleTime+'s ease-in-out';
+    ring.classList.remove('expand');
+    status.textContent='吐く...';
+    breathPhaseTimer=setTimeout(function(){breathStep=0;runBreathAnim();}, exhale);
+  }
+}
+
+function stopBreathAnim(){
+  clearTimeout(breathPhaseTimer);
+  var ring=document.getElementById('breath-ring');
+  if(ring) ring.classList.remove('expand');
+}
+
 function toggleTimer() {
   if (!running) {
-    running=true; document.getElementById('start-btn').textContent='一時停止'; document.getElementById('timer-status').textContent='瞑想中...';
+    running=true; document.getElementById('start-btn').textContent='一時停止';
     if (currentSound!=='none'&&!soundPlaying) playSound(currentSound);
+    startBreathAnim();
     timerInterval=setInterval(function() {
       remaining--;
       updateDisplay();
       if (remaining<=0) {
         clearInterval(timerInterval); running=false; stopAllSounds(); playBell();
+        stopBreathAnim();
         document.getElementById('timer-status').textContent='完了！お疲れさまでした';
         document.getElementById('start-btn').textContent='開始';
         saveRecord(targetMin);
@@ -549,6 +622,7 @@ function toggleTimer() {
     }, 1000);
   } else {
     clearInterval(timerInterval); running=false;
+    stopBreathAnim();
     document.getElementById('start-btn').textContent='再開'; document.getElementById('timer-status').textContent='一時停止中';
   }
 }
@@ -599,7 +673,28 @@ function renderLog() {
 }
 
 var breathRunning=false, breathInterval=null;
-var breathPhases=[{label:'吸う',duration:4000,fill:'100%'},{label:'止める',duration:4000,fill:'100%'},{label:'吐く',duration:4000,fill:'0%'}];
+var inhaleTime=4, holdTime=4, exhaleTime=4;
+
+function updateBreathSettings() {
+  inhaleTime=parseInt(document.getElementById('inhale-slider').value);
+  holdTime=parseInt(document.getElementById('hold-slider').value);
+  exhaleTime=parseInt(document.getElementById('exhale-slider').value);
+  document.getElementById('inhale-val').textContent=inhaleTime+'秒';
+  document.getElementById('hold-val').textContent=holdTime+'秒';
+  document.getElementById('exhale-val').textContent=exhaleTime+'秒';
+}
+
+function getBreathPhases() {
+  var phases=[
+    {label:'吸う', duration:inhaleTime*1000, fill:'100%'},
+    {label:'吐く', duration:exhaleTime*1000, fill:'0%'}
+  ];
+  if (holdTime>0) {
+    phases.splice(1,0,{label:'止める', duration:holdTime*1000, fill:'100%'});
+  }
+  return phases;
+}
+
 function toggleBreath() {
   if (!breathRunning) {
     breathRunning=true; document.getElementById('breath-btn').textContent='停止'; runBreathPhase(0);
@@ -613,12 +708,13 @@ function toggleBreath() {
 }
 function runBreathPhase(idx) {
   if (!breathRunning) return;
-  var p=breathPhases[idx];
+  var phases=getBreathPhases();
+  var p=phases[idx%phases.length];
   document.getElementById('breath-guide').textContent=p.label;
   document.getElementById('breath-text').textContent=p.label;
   var f=document.getElementById('breath-fill');
   f.style.transition='height '+p.duration+'ms ease-in-out'; f.style.height=p.fill;
-  breathInterval=setTimeout(function(){ runBreathPhase((idx+1)%3); }, p.duration);
+  breathInterval=setTimeout(function(){ runBreathPhase((idx+1)%phases.length); }, p.duration);
 }
 
 updateDisplay(); syncDurationUI(); selectSound('none');
