@@ -52,11 +52,13 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
 .vol-val{font-size:13px;color:rgba(255,255,255,0.75);min-width:28px;text-align:right}
 .play-indicator{text-align:center;font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:1rem;height:18px}
 .breathe-guide{text-align:center;font-size:14px;color:rgba(255,255,255,0.9);margin-bottom:1rem;height:20px}
-.breath-settings{display:flex;flex-direction:column;gap:8px;margin:1rem 0;padding:0 4px}
-.breath-setting-row{display:flex;align-items:center;gap:10px}
-.breath-setting-label{font-size:13px;color:rgba(255,255,255,0.75);min-width:44px}
-.breath-setting-row input{flex:1;accent-color:rgba(255,255,255,0.9);cursor:pointer}
-.breath-setting-val{font-size:13px;color:rgba(255,255,255,0.75);min-width:28px;text-align:right}
+.breath-settings{display:table;width:100%;margin:1rem 0;padding:0 4px;border-spacing:0 8px}
+.breath-setting-row{display:table-row}
+.breath-setting-label{display:table-cell;font-size:13px;color:rgba(255,255,255,0.75);white-space:nowrap;padding-right:10px;vertical-align:middle;width:40px;min-width:40px}
+.breath-setting-row input{display:table-cell;width:100%;accent-color:rgba(255,255,255,0.9);cursor:pointer;vertical-align:middle}
+.slider-cell{display:table-cell;width:100%;vertical-align:middle;padding:0 10px}
+.slider-cell input{width:100%;accent-color:rgba(255,255,255,0.9);cursor:pointer}
+.breath-setting-val{display:table-cell;font-size:13px;color:rgba(255,255,255,0.75);white-space:nowrap;padding-left:10px;vertical-align:middle;text-align:right}
 .breathing-ring{width:200px;height:200px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;border:1.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.1);position:relative;overflow:hidden}
 .breath-fill{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.2);transition:height 4s ease-in-out}
 .breath-text{position:relative;z-index:1;font-size:16px;color:rgba(255,255,255,0.9)}
@@ -71,6 +73,11 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
 .streak-day.today{border:1.5px solid rgba(255,255,255,0.7)}
 .empty{text-align:center;font-size:14px;color:rgba(255,255,255,0.45);padding:2.5rem 0}
 .bell-note{text-align:center;font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:0.5rem}
+.splash-screen{display:flex;align-items:center;justify-content:center;min-height:560px;background:transparent}
+.splash-inner{text-align:center;opacity:0;transition:opacity 0.8s ease-in-out}
+.splash-inner.visible{opacity:1}
+.splash-date{font-size:28px;font-weight:300;color:#fff;letter-spacing:2px;margin-bottom:12px}
+.splash-greeting{font-size:15px;color:rgba(255,255,255,0.7);letter-spacing:1px}
 .stats-row{display:flex;gap:8px;justify-content:center;margin-bottom:1.5rem}
 .stat-box{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);text-align:center}
 .stat-val{font-size:20px;font-weight:500;color:#fff}
@@ -82,7 +89,14 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
   <canvas id="bg-canvas"></canvas>
   <div id="overlay"></div>
   <div id="content">
-    <div id="screen-timer" class="screen active">
+    <div id="screen-splash" class="screen active splash-screen">
+      <div class="splash-inner">
+        <div class="splash-date" id="splash-date"></div>
+        <div class="splash-greeting" id="splash-greeting"></div>
+      </div>
+    </div>
+
+    <div id="screen-timer" class="screen">
       <p class="sub">今日も瞑想しましょう</p>
       <div class="timer-circle" id="timer-circle">
         <div class="breath-ring" id="breath-ring"></div>
@@ -146,20 +160,20 @@ body{background:#111;display:flex;align-items:center;justify-content:center;min-
         <div class="breath-text" id="breath-text">◯</div>
       </div>
       <div class="breath-settings">
-        <div class="breath-setting-row">
-          <span class="breath-setting-label">吸う</span>
-          <input type="range" min="1" max="10" value="4" step="1" id="inhale-slider" oninput="updateBreathSettings()">
-          <span class="breath-setting-val" id="inhale-val">4秒</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);width:44px;min-width:44px;flex-shrink:0">吸う&emsp;</span>
+          <input style="flex:1" type="range" min="1" max="10" value="4" step="1" id="inhale-slider" oninput="updateBreathSettings()">
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);width:28px;min-width:28px;flex-shrink:0;text-align:right" id="inhale-val">4秒</span>
         </div>
-        <div class="breath-setting-row">
-          <span class="breath-setting-label">止める</span>
-          <input type="range" min="0" max="10" value="4" step="1" id="hold-slider" oninput="updateBreathSettings()">
-          <span class="breath-setting-val" id="hold-val">4秒</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);width:44px;min-width:44px;flex-shrink:0">止める</span>
+          <input style="flex:1" type="range" min="1" max="10" value="4" step="1" id="hold-slider" oninput="updateBreathSettings()">
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);width:28px;min-width:28px;flex-shrink:0;text-align:right" id="hold-val">4秒</span>
         </div>
-        <div class="breath-setting-row">
-          <span class="breath-setting-label">吐く</span>
-          <input type="range" min="1" max="10" value="4" step="1" id="exhale-slider" oninput="updateBreathSettings()">
-          <span class="breath-setting-val" id="exhale-val">4秒</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);width:44px;min-width:44px;flex-shrink:0">吐く&emsp;</span>
+          <input style="flex:1" type="range" min="1" max="10" value="4" step="1" id="exhale-slider" oninput="updateBreathSettings()">
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);width:28px;min-width:28px;flex-shrink:0;text-align:right" id="exhale-val">4秒</span>
         </div>
       </div>
       <div class="btn-row">
@@ -197,152 +211,442 @@ var ctx2d = canvas.getContext('2d');
 var animT = 0, currentSound = 'none';
 
 function drawSunrise(t, w, h) {
-  var skyY = h * 0.62;
-  ctx2d.fillStyle = '#1a3a5c'; ctx2d.fillRect(0, 0, w, h);
-  var layers = [{y:0,ht:h*0.25,c:'rgba(40,60,100,1)'},{y:h*0.18,ht:h*0.2,c:'rgba(100,80,120,0.7)'},{y:h*0.3,ht:h*0.18,c:'rgba(200,100,80,0.55)'},{y:h*0.42,ht:h*0.15,c:'rgba(240,150,60,0.6)'},{y:h*0.52,ht:h*0.12,c:'rgba(255,200,80,0.5)'}];
-  for (var li = 0; li < layers.length; li++) { ctx2d.fillStyle = layers[li].c; ctx2d.fillRect(0, layers[li].y, w, layers[li].ht); }
-  var sp = 0.18 + Math.sin(t * 0.00004) * 0.04, sunX = w * 0.5, sunY = skyY - skyY * sp;
-  for (var i = 0; i < 12; i++) {
-    var angle = (i / 12) * Math.PI * 2 + t * 0.0001, rl = 60 + Math.sin(t * 0.0008 + i) * 15;
-    ctx2d.beginPath(); ctx2d.moveTo(sunX, sunY); ctx2d.lineTo(sunX + Math.cos(angle) * rl, sunY + Math.sin(angle) * rl);
-    ctx2d.strokeStyle = 'rgba(255,220,100,' + (0.06 + Math.sin(t * 0.001 + i) * 0.02) + ')'; ctx2d.lineWidth = 8 + Math.sin(i) * 4; ctx2d.stroke();
-  }
-  var sr = 22 + Math.sin(t * 0.0005) * 1.5;
-  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sr, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,240,160,0.95)'; ctx2d.fill();
-  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sr * 2.2, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,200,80,0.15)'; ctx2d.fill();
-  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sr * 3.5, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,160,60,0.07)'; ctx2d.fill();
-  ctx2d.fillStyle = '#1a3a4a'; ctx2d.fillRect(0, skyY, w, h - skyY);
-  for (var i = 0; i < 8; i++) {
-    var wy = skyY + 12 + i * ((h - skyY - 12) / 8);
-    ctx2d.beginPath(); ctx2d.moveTo(0, wy);
-    for (var x = 0; x <= w; x += 4) ctx2d.lineTo(x, wy + Math.sin(x * 0.03 + t * 0.001 + i * 0.7) * (2 + i * 0.5));
-    ctx2d.strokeStyle = 'rgba(255,200,100,' + (0.06 - i * 0.005) + ')'; ctx2d.lineWidth = 1; ctx2d.stroke();
-  }
-  var rg = ctx2d.createLinearGradient(sunX - 20, skyY, sunX + 20, h);
-  rg.addColorStop(0, 'rgba(255,200,80,0.18)'); rg.addColorStop(1, 'rgba(255,200,80,0)');
-  ctx2d.fillStyle = rg; ctx2d.fillRect(sunX - 18, skyY, 36, h - skyY);
-  var mts = [[0,0],[0.08,0.14],[0.18,0.06],[0.28,0.18],[0.38,0.08],[0.5,0.22],[0.62,0.1],[0.72,0.2],[0.82,0.07],[0.92,0.16],[1,0.05],[1,0]];
-  ctx2d.fillStyle = 'rgba(30,50,70,0.7)'; ctx2d.beginPath(); ctx2d.moveTo(0, skyY);
-  for (var mi = 0; mi < mts.length; mi++) ctx2d.lineTo(mts[mi][0] * w, skyY - mts[mi][1] * skyY * 0.55);
+  var skyY = h * 0.6;
+  // 空のグラデーション
+  var skyGrd = ctx2d.createLinearGradient(0, 0, 0, skyY);
+  skyGrd.addColorStop(0, '#1a2a5c');
+  skyGrd.addColorStop(0.35, '#3a3570');
+  skyGrd.addColorStop(0.6, '#c45a30');
+  skyGrd.addColorStop(0.8, '#e8922a');
+  skyGrd.addColorStop(1, '#f5c842');
+  ctx2d.fillStyle = skyGrd; ctx2d.fillRect(0, 0, w, skyY);
+
+  // 雲（ふわっとした朝焼けの雲）
+  var cloudData = [[0.15,0.2,80,25],[0.45,0.12,100,20],[0.75,0.18,90,22],[0.3,0.35,70,18],[0.65,0.3,85,20]];
+  cloudData.forEach(function(c) {
+    var cx2=c[0]*w, cy=c[1]*skyY, cr=c[2], ch=c[3];
+    var cGrd = ctx2d.createRadialGradient(cx2, cy, 0, cx2, cy, cr);
+    cGrd.addColorStop(0, 'rgba(255,180,120,0.35)');
+    cGrd.addColorStop(0.5, 'rgba(255,140,80,0.2)');
+    cGrd.addColorStop(1, 'rgba(255,100,50,0)');
+    ctx2d.fillStyle = cGrd;
+    ctx2d.beginPath(); ctx2d.ellipse(cx2, cy, cr, ch, 0, 0, Math.PI*2); ctx2d.fill();
+  });
+
+  // 太陽
+  var sp = 0.22 + Math.sin(t * 0.00003) * 0.03;
+  var sunX = w * 0.5, sunY = skyY * (1 - sp);
+  // 太陽のグロー（大）
+  var sunGlow2 = ctx2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, 150);
+  sunGlow2.addColorStop(0, 'rgba(255,220,100,0.25)');
+  sunGlow2.addColorStop(0.4, 'rgba(255,150,50,0.1)');
+  sunGlow2.addColorStop(1, 'rgba(255,100,30,0)');
+  ctx2d.fillStyle = sunGlow2; ctx2d.fillRect(sunX-150, sunY-150, 300, 300);
+  // 太陽本体
+  var sunR = 28 + Math.sin(t * 0.0004) * 1;
+  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sunR, 0, Math.PI*2);
+  ctx2d.fillStyle = '#fff5c0'; ctx2d.fill();
+  ctx2d.beginPath(); ctx2d.arc(sunX, sunY, sunR*1.3, 0, Math.PI*2);
+  ctx2d.fillStyle = 'rgba(255,230,140,0.4)'; ctx2d.fill();
+
+  // 地平線付近のオレンジ光
+  var horizGrd = ctx2d.createLinearGradient(0, skyY*0.7, 0, skyY);
+  horizGrd.addColorStop(0, 'rgba(255,120,30,0)');
+  horizGrd.addColorStop(1, 'rgba(255,160,50,0.3)');
+  ctx2d.fillStyle = horizGrd; ctx2d.fillRect(0, skyY*0.7, w, skyY*0.3);
+
+  // 山のシルエット（遠景・薄い）
+  ctx2d.fillStyle = 'rgba(80,60,100,0.5)';
+  ctx2d.beginPath(); ctx2d.moveTo(0, skyY);
+  var mts2 = [[0,0],[0.05,0.1],[0.12,0.05],[0.2,0.15],[0.3,0.06],[0.4,0.2],[0.5,0.08],[0.6,0.18],[0.72,0.06],[0.82,0.14],[0.92,0.04],[1,0.09],[1,0]];
+  mts2.forEach(function(m){ ctx2d.lineTo(m[0]*w, skyY-m[1]*skyY*0.5); });
   ctx2d.closePath(); ctx2d.fill();
-  ctx2d.fillStyle = 'rgba(20,35,25,0.85)'; ctx2d.beginPath(); ctx2d.moveTo(0, h); ctx2d.lineTo(0, skyY + 2);
-  for (var x = 0; x <= w; x += 6) ctx2d.lineTo(x, skyY + 2 + Math.sin(x * 0.05 + t * 0.0004) * 1.5);
-  ctx2d.lineTo(w, h); ctx2d.closePath(); ctx2d.fill();
-  for (var i = 0; i < 18; i++) {
-    var gx = w * (i / 17), gy = skyY + 2, gh = 8 + Math.sin(i * 1.7) * 5, sw = Math.sin(t * 0.0006 + i * 0.8) * 2;
-    ctx2d.beginPath(); ctx2d.moveTo(gx, gy + 2); ctx2d.quadraticCurveTo(gx + sw, gy - gh * 0.5, gx + sw * 1.5, gy - gh);
-    ctx2d.strokeStyle = 'rgba(30,55,30,0.7)'; ctx2d.lineWidth = 1.5; ctx2d.stroke();
+
+  // 山のシルエット（近景・濃い）
+  ctx2d.fillStyle = 'rgba(30,25,40,0.85)';
+  ctx2d.beginPath(); ctx2d.moveTo(0, skyY);
+  var mts3 = [[0,0],[0.08,0.08],[0.18,0.03],[0.28,0.12],[0.4,0.04],[0.5,0.16],[0.62,0.05],[0.72,0.13],[0.85,0.03],[0.95,0.1],[1,0.02],[1,0]];
+  mts3.forEach(function(m){ ctx2d.lineTo(m[0]*w, skyY-m[1]*skyY*0.45); });
+  ctx2d.closePath(); ctx2d.fill();
+
+  // 水面
+  var waterGrd = ctx2d.createLinearGradient(0, skyY, 0, h);
+  waterGrd.addColorStop(0, '#2a3a5a');
+  waterGrd.addColorStop(0.3, '#1a2840');
+  waterGrd.addColorStop(1, '#0f1a28');
+  ctx2d.fillStyle = waterGrd; ctx2d.fillRect(0, skyY, w, h-skyY);
+
+  // 水面の波
+  for (var i = 0; i < 10; i++) {
+    var wy = skyY + 5 + i * ((h-skyY-10)/10);
+    ctx2d.beginPath(); ctx2d.moveTo(0, wy);
+    for (var x = 0; x <= w; x += 3)
+      ctx2d.lineTo(x, wy + Math.sin(x*0.025+t*0.0006+i*0.6)*(1.5+i*0.3)+Math.cos(x*0.015+t*0.0004)*(1+i*0.2));
+    ctx2d.strokeStyle = 'rgba(255,180,80,'+(0.08-i*0.006)+')';
+    ctx2d.lineWidth = 0.8; ctx2d.stroke();
   }
+
+  // 太陽の水面反射
+  var refLen = h - skyY;
   for (var i = 0; i < 18; i++) {
-    var sx = (Math.sin(i * 2.3) * 0.5 + 0.5) * w, sy = (Math.cos(i * 1.7) * 0.5 + 0.5) * skyY * 0.5;
-    var al = Math.max(0, 0.3 - sp * 1.2 + Math.sin(t * 0.001 + i) * 0.05);
-    ctx2d.beginPath(); ctx2d.arc(sx, sy, 1, 0, Math.PI * 2); ctx2d.fillStyle = 'rgba(255,255,255,' + al + ')'; ctx2d.fill();
+    var ry = skyY + i * (refLen/18);
+    var rw2 = (15+i*3)+Math.sin(t*0.002+i)*6;
+    ctx2d.beginPath(); ctx2d.moveTo(sunX-rw2, ry); ctx2d.lineTo(sunX+rw2, ry);
+    ctx2d.strokeStyle = 'rgba(255,210,100,'+(0.3-i*0.014)+')';
+    ctx2d.lineWidth = 1.2; ctx2d.stroke();
+  }
+
+  // 前景（草原・草）
+  ctx2d.fillStyle = '#0f1a10';
+  ctx2d.beginPath(); ctx2d.moveTo(0,h); ctx2d.lineTo(0,skyY);
+  for (var x=0; x<=w; x+=5)
+    ctx2d.lineTo(x, skyY+Math.sin(x*0.04+t*0.0003)*2);
+  ctx2d.lineTo(w,h); ctx2d.closePath(); ctx2d.fill();
+
+  // 草
+  for (var i = 0; i < 25; i++) {
+    var gx = w*(i/24), gy = skyY+1, gh = 10+Math.sin(i*1.7)*5;
+    var gsw = Math.sin(t*0.0005+i*0.9)*3;
+    ctx2d.beginPath(); ctx2d.moveTo(gx, gy+2);
+    ctx2d.quadraticCurveTo(gx+gsw, gy-gh*0.5, gx+gsw*1.5, gy-gh);
+    ctx2d.strokeStyle = 'rgba(20,40,15,0.8)'; ctx2d.lineWidth = 1.5; ctx2d.stroke();
+  }
+
+  // 残りの星（消えかけ）
+  for (var i = 0; i < 15; i++) {
+    var sx = (Math.sin(i*2.3)*0.5+0.5)*w;
+    var sy2 = (Math.cos(i*1.7)*0.5+0.5)*skyY*0.4;
+    var al = Math.max(0, 0.25 - sp*0.8);
+    ctx2d.beginPath(); ctx2d.arc(sx, sy2, 0.8, 0, Math.PI*2);
+    ctx2d.fillStyle = 'rgba(255,255,255,'+al+')'; ctx2d.fill();
   }
 }
 
 var themes = {
   none: { draw: function(t,w,h){ drawSunrise(t,w,h); } },
-  forest: { draw: function(t,w,h){
-    ctx2d.fillStyle='#1a3a1a'; ctx2d.fillRect(0,0,w,h);
-    ctx2d.fillStyle='#0d2b0d'; ctx2d.fillRect(0,h*0.55,w,h*0.45);
-    var trees=[[40,1.2,0],[90,0.8,1],[150,1.4,2],[220,0.9,3],[290,1.1,4],[360,0.7,5],[400,1.3,1.5]];
-    for (var ti=0; ti<trees.length; ti++) {
-      var tx=trees[ti][0], tsc=trees[ti][1], tph=trees[ti][2];
-      var sw=Math.sin(t*0.0006+tph)*4*tsc;
-      ctx2d.save(); ctx2d.translate(tx+sw*0.3,h*0.55);
-      ctx2d.fillStyle='#1e1e0a'; ctx2d.fillRect(-4*tsc,-80*tsc,8*tsc,80*tsc);
-      var buds=[[0,-80,28],[0,-110,24],[0,-135,20],[0,-156,16]];
-      for (var bi=0; bi<buds.length; bi++) {
-        ctx2d.beginPath(); ctx2d.arc(buds[bi][0]*tsc+sw,buds[bi][1]*tsc,buds[bi][2]*tsc,0,Math.PI*2);
-        ctx2d.fillStyle='hsl('+(120+Math.sin(t*0.0004+tph)*5)+','+(40+tsc*10)+'%,'+(18+tsc*8)+'%)'; ctx2d.fill();
-      }
-      ctx2d.restore();
+  stars: { draw: function(t,w,h){
+    ctx2d.fillStyle='#0a0a18'; ctx2d.fillRect(0,0,w,h);
+    // 天の川風のぼんやりした光
+    for (var i=0; i<3; i++) {
+      var gx=w*(0.2+i*0.3), gy=h*0.4;
+      var grad=ctx2d.createRadialGradient(gx,gy,0,gx,gy,h*0.4);
+      grad.addColorStop(0,'rgba(150,160,220,0.06)');
+      grad.addColorStop(1,'rgba(0,0,0,0)');
+      ctx2d.fillStyle=grad; ctx2d.fillRect(0,0,w,h);
     }
-    for (var i=0; i<15; i++) {
-      var bx=(Math.sin(i*1.3+t*0.0004)*0.5+0.5)*w, by=(Math.cos(i*2.1+t*0.0003)*0.3+0.2)*h;
-      ctx2d.beginPath(); ctx2d.arc(bx,by,1.5,0,Math.PI*2);
-      ctx2d.fillStyle='rgba(255,220,100,'+(0.4+Math.sin(t*0.002+i)*0.3)+')'; ctx2d.fill();
+    // 星
+    for (var i=0; i<120; i++) {
+      var sx=(Math.sin(i*137.5)*0.5+0.5)*w;
+      var sy=(Math.cos(i*97.3)*0.5+0.5)*h;
+      var sr=Math.random()<0.1?1.8:0.8;
+      var alpha=0.4+Math.sin(t*0.001*((i%5)+1)+i)*0.35;
+      ctx2d.beginPath(); ctx2d.arc(sx,sy,sr,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(255,255,255,'+alpha+')'; ctx2d.fill();
+    }
+    // 流れ星
+    var meteor_t=(t*0.0004)%1;
+    if(meteor_t<0.3){
+      var mx=w*0.8-meteor_t*w*0.6, my=h*0.1+meteor_t*h*0.2;
+      ctx2d.beginPath(); ctx2d.moveTo(mx,my); ctx2d.lineTo(mx+60,my-20);
+      ctx2d.strokeStyle='rgba(255,255,255,'+(0.8*(1-meteor_t/0.3))+')';
+      ctx2d.lineWidth=1.5; ctx2d.stroke();
+    }
+  }},
+  forest: { draw: function(t,w,h){
+    // 空：薄明かりの森
+    var skyGrd=ctx2d.createLinearGradient(0,0,0,h*0.55);
+    skyGrd.addColorStop(0,'#0d1f0d');
+    skyGrd.addColorStop(1,'#1a3a1a');
+    ctx2d.fillStyle=skyGrd; ctx2d.fillRect(0,0,w,h);
+    // 地面
+    ctx2d.fillStyle='#0a1a0a'; ctx2d.fillRect(0,h*0.55,w,h*0.45);
+    // 霧
+    for (var i=0; i<4; i++) {
+      var fogY=h*(0.5+i*0.06);
+      var fogGrd=ctx2d.createLinearGradient(0,fogY,0,fogY+h*0.08);
+      fogGrd.addColorStop(0,'rgba(180,220,180,0.04)');
+      fogGrd.addColorStop(1,'rgba(180,220,180,0)');
+      ctx2d.fillStyle=fogGrd; ctx2d.fillRect(0,fogY,w,h*0.08);
+    }
+    // 遠くの木（薄く）
+    for (var i=0; i<12; i++) {
+      var tx=w*(i/11), th2=h*(0.15+Math.sin(i*2.3)*0.08);
+      ctx2d.fillStyle='rgba(15,35,15,0.6)';
+      ctx2d.beginPath(); ctx2d.moveTo(tx,h*0.55);
+      ctx2d.lineTo(tx-tx*0.03,h*0.55-th2); ctx2d.lineTo(tx+tx*0.03,h*0.55-th2);
+      ctx2d.closePath(); ctx2d.fill();
+    }
+    // 近くの木
+    var drawTree=function(x,sc,ph){
+      var sw=Math.sin(t*0.0005+ph)*3*sc;
+      ctx2d.save(); ctx2d.translate(x,h*0.55);
+      // 幹
+      ctx2d.fillStyle='#1a1208';
+      ctx2d.fillRect(-3*sc+sw*0.2,-70*sc,6*sc,70*sc);
+      // 葉（複数層）
+      var leafColors=['#0d2a0d','#102e10','#0f2b0f','#132f13'];
+      [[0,-75,30],[sw*0.3,-100,26],[sw*0.5,-122,22],[sw*0.7,-140,18]].forEach(function(a,li){
+        ctx2d.beginPath(); ctx2d.arc(a[0],a[1],a[2]*sc,0,Math.PI*2);
+        ctx2d.fillStyle=leafColors[li]; ctx2d.fill();
+      });
+      ctx2d.restore();
+    };
+    [[30,1.3,0],[80,0.9,1],[140,1.5,2],[210,1.0,3],[280,1.2,4],[350,0.8,5],[410,1.4,1.5],[460,1.1,2.5]].forEach(function(a){ drawTree(a[0],a[1],a[2]); });
+    // 蛍
+    for (var i=0; i<20; i++) {
+      var bx=(Math.sin(i*1.3+t*0.0003)*0.5+0.5)*w;
+      var by=h*(0.3+Math.cos(i*2.1+t*0.0002)*0.2);
+      var ba=Math.max(0,Math.sin(t*0.002+i*0.8));
+      if(ba>0.3){
+        ctx2d.beginPath(); ctx2d.arc(bx,by,2,0,Math.PI*2);
+        ctx2d.fillStyle='rgba(200,255,150,'+ba*0.7+')'; ctx2d.fill();
+        ctx2d.beginPath(); ctx2d.arc(bx,by,5,0,Math.PI*2);
+        ctx2d.fillStyle='rgba(200,255,150,'+ba*0.15+')'; ctx2d.fill();
+      }
     }
   }},
   ocean: { draw: function(t,w,h){
-    ctx2d.fillStyle='#0a1628'; ctx2d.fillRect(0,0,w,h);
-    ctx2d.fillStyle='#0d3060'; ctx2d.fillRect(0,0,w,h*0.45);
-    for (var i=0; i<5; i++) {
-      var y=h*(0.4+i*0.08)+Math.sin(t*0.0005+i)*8, amp=6+i*3;
-      ctx2d.beginPath(); ctx2d.moveTo(0,y);
-      for (var x=0; x<=w; x+=4) ctx2d.lineTo(x,y+Math.sin(x*0.022+t*0.0008+i*0.8)*amp+Math.cos(x*0.014+t*0.0005)*amp*0.5);
-      ctx2d.lineTo(w,h); ctx2d.lineTo(0,h); ctx2d.closePath();
-      ctx2d.fillStyle='rgba('+(10+i*5)+','+(40+i*15)+','+(95+i*10)+',0.6)'; ctx2d.fill();
+    // 夜の海空
+    var skyGrd=ctx2d.createLinearGradient(0,0,0,h*0.5);
+    skyGrd.addColorStop(0,'#060d1f');
+    skyGrd.addColorStop(1,'#0a1e3a');
+    ctx2d.fillStyle=skyGrd; ctx2d.fillRect(0,0,w,h);
+    // 月
+    var moonX=w*0.75, moonY=h*0.15;
+    ctx2d.beginPath(); ctx2d.arc(moonX,moonY,22,0,Math.PI*2);
+    ctx2d.fillStyle='rgba(255,248,220,0.95)'; ctx2d.fill();
+    // 月のグロー
+    var moonGlow=ctx2d.createRadialGradient(moonX,moonY,22,moonX,moonY,80);
+    moonGlow.addColorStop(0,'rgba(255,248,200,0.15)');
+    moonGlow.addColorStop(1,'rgba(255,248,200,0)');
+    ctx2d.fillStyle=moonGlow; ctx2d.fillRect(moonX-80,moonY-80,160,160);
+    // 星
+    for (var i=0; i<50; i++) {
+      var sx=(Math.sin(i*137.5)*0.5+0.5)*w;
+      var sy=(Math.cos(i*97.3)*0.5+0.5)*h*0.45;
+      var alpha=0.3+Math.sin(t*0.001+i)*0.25;
+      ctx2d.beginPath(); ctx2d.arc(sx,sy,0.8,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(255,255,255,'+alpha+')'; ctx2d.fill();
     }
-    for (var i=0; i<20; i++) {
-      var sx=(Math.sin(i*2.3+t*0.00015)*0.5+0.5)*w, sy=(Math.cos(i*1.7+t*0.0001)*0.3+0.1)*h;
-      ctx2d.beginPath(); ctx2d.arc(sx,sy,1,0,Math.PI*2);
-      ctx2d.fillStyle='rgba(255,255,255,'+(0.2+Math.sin(i+t*0.001)*0.15)+')'; ctx2d.fill();
+    // 海面
+    var seaGrd=ctx2d.createLinearGradient(0,h*0.45,0,h);
+    seaGrd.addColorStop(0,'#061530');
+    seaGrd.addColorStop(1,'#040d1e');
+    ctx2d.fillStyle=seaGrd; ctx2d.fillRect(0,h*0.45,w,h*0.55);
+    // 波
+    for (var i=0; i<7; i++) {
+      var wy=h*(0.45+i*0.07)+Math.sin(t*0.0004+i)*5;
+      var wAmp=3+i*1.5;
+      ctx2d.beginPath(); ctx2d.moveTo(0,wy);
+      for (var x=0; x<=w; x+=3) {
+        var wh=wy+Math.sin(x*0.018+t*0.0006+i*0.9)*wAmp+Math.cos(x*0.01+t*0.0004)*wAmp*0.4;
+        ctx2d.lineTo(x,wh);
+      }
+      ctx2d.lineTo(w,h); ctx2d.lineTo(0,h); ctx2d.closePath();
+      ctx2d.fillStyle='rgba('+(8+i*4)+','+(20+i*10)+','+(50+i*8)+',0.7)'; ctx2d.fill();
+    }
+    // 月の水面反射
+    var refW=30+Math.sin(t*0.0008)*10;
+    for (var i=0; i<12; i++) {
+      var ry=h*0.47+i*((h*0.53)/12);
+      var rw2=refW*(1-i*0.04)+Math.sin(t*0.002+i)*8;
+      ctx2d.beginPath(); ctx2d.moveTo(moonX-rw2,ry); ctx2d.lineTo(moonX+rw2,ry);
+      ctx2d.strokeStyle='rgba(255,248,180,'+(0.25-i*0.018)+')';
+      ctx2d.lineWidth=1.5; ctx2d.stroke();
+    }
+    // 白波
+    for (var i=0; i<5; i++) {
+      var foam_x=(t*0.05+i*w*0.22)%w;
+      var foam_y=h*(0.47+i*0.08);
+      ctx2d.beginPath(); ctx2d.arc(foam_x,foam_y,2,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(255,255,255,0.3)'; ctx2d.fill();
     }
   }},
   river: { draw: function(t,w,h){
-    ctx2d.fillStyle='#1a2a10'; ctx2d.fillRect(0,0,w,h);
-    ctx2d.fillStyle='#0f1f08'; ctx2d.fillRect(0,0,w*0.22,h); ctx2d.fillRect(w*0.78,0,w*0.22,h);
-    ctx2d.fillStyle='#0a1f3a';
-    var rw=w*0.56, rx=w*0.22; ctx2d.fillRect(rx,0,rw,h);
-    for (var i=0; i<12; i++) {
-      var ry=h*(i/12)+Math.sin(t*0.0006+i)*6;
-      ctx2d.beginPath(); ctx2d.moveTo(rx,ry);
-      for (var x=rx; x<=rx+rw; x+=3) ctx2d.lineTo(x,ry+Math.sin(x*0.04+t*0.001+i)*3);
-      ctx2d.lineTo(rx+rw,ry+8); ctx2d.lineTo(rx,ry+8); ctx2d.closePath();
-      ctx2d.fillStyle='rgba(30,80,140,'+(0.15+Math.sin(i*0.5)*0.05)+')'; ctx2d.fill();
+    // 森の中の川
+    var bgGrd=ctx2d.createLinearGradient(0,0,0,h);
+    bgGrd.addColorStop(0,'#0d1f0d'); bgGrd.addColorStop(1,'#0a150a');
+    ctx2d.fillStyle=bgGrd; ctx2d.fillRect(0,0,w,h);
+    // 両岸の木々（奥）
+    for (var i=0; i<8; i++) {
+      var tx=i*(w/8);
+      ctx2d.fillStyle='rgba(10,25,10,0.8)';
+      ctx2d.fillRect(tx,0,w/8,h*(0.4+Math.sin(i)*0.1));
     }
-    for (var i=0; i<6; i++) {
-      var lx=rx+rw*((i+0.5)/6), ly=(t*0.05+i*60)%h;
-      ctx2d.beginPath(); ctx2d.arc(lx,ly,2,0,Math.PI*2); ctx2d.fillStyle='rgba(255,255,255,0.25)'; ctx2d.fill();
+    // 川
+    var rw=w*0.5, rx=w*0.25;
+    var riverGrd=ctx2d.createLinearGradient(rx,0,rx+rw,0);
+    riverGrd.addColorStop(0,'#061525');
+    riverGrd.addColorStop(0.5,'#0a2040');
+    riverGrd.addColorStop(1,'#061525');
+    ctx2d.fillStyle=riverGrd; ctx2d.fillRect(rx,0,rw,h);
+    // 川の流れ
+    for (var i=0; i<15; i++) {
+      var ry=((t*0.06+i*(h/15))%h);
+      var curve=Math.sin(ry*0.02+t*0.001)*rw*0.15;
+      ctx2d.beginPath(); ctx2d.moveTo(rx+rw*0.3+curve,ry);
+      for (var dy=0; dy<h/15; dy+=3) {
+        var cx2=rx+rw*0.3+Math.sin((ry+dy)*0.02+t*0.001+i)*rw*0.15;
+        ctx2d.lineTo(cx2,ry+dy);
+      }
+      ctx2d.strokeStyle='rgba(100,160,220,'+(0.08+Math.sin(i*0.7)*0.04)+')';
+      ctx2d.lineWidth=1+Math.sin(i)*0.5; ctx2d.stroke();
+    }
+    // 水面のきらめき
+    for (var i=0; i<25; i++) {
+      var kx=rx+Math.sin(i*2.3+t*0.002)*rw*0.4+rw*0.5;
+      var ky=((t*0.04+i*37)%h);
+      var ka=Math.sin(t*0.003+i)*0.5+0.5;
+      ctx2d.beginPath(); ctx2d.arc(kx,ky,1.5,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(180,220,255,'+ka*0.6+')'; ctx2d.fill();
+    }
+    // 両岸（草）
+    ctx2d.fillStyle='#0a1a08';
+    ctx2d.fillRect(0,0,rx+5,h);
+    ctx2d.fillRect(rx+rw-5,0,w-rx-rw+5,h);
+    // 草のディテール
+    for (var i=0; i<30; i++) {
+      var gside=i<15?0:1;
+      var gx=gside===0?Math.random()*rx:(rx+rw+Math.random()*(w-rx-rw));
+      var gy=Math.random()*h;
+      var gh=8+Math.random()*12;
+      var gsw=Math.sin(t*0.0005+i)*2;
+      ctx2d.beginPath(); ctx2d.moveTo(gx,gy);
+      ctx2d.quadraticCurveTo(gx+gsw,gy-gh*0.6,gx+gsw*1.5,gy-gh);
+      ctx2d.strokeStyle='rgba(20,50,15,0.8)'; ctx2d.lineWidth=1.5; ctx2d.stroke();
     }
   }},
   rain: { draw: function(t,w,h){
-    ctx2d.fillStyle='#1a1e28'; ctx2d.fillRect(0,0,w,h);
+    // 雨の夜
+    var skyGrd=ctx2d.createLinearGradient(0,0,0,h);
+    skyGrd.addColorStop(0,'#111520'); skyGrd.addColorStop(1,'#1a1e2a');
+    ctx2d.fillStyle=skyGrd; ctx2d.fillRect(0,0,w,h);
+    // 雲
     for (var i=0; i<5; i++) {
-      ctx2d.beginPath(); ctx2d.arc(w*(0.1+i*0.2)+Math.sin(t*0.0002+i)*20,h*0.2+Math.cos(t*0.0001+i)*30,80+i*20,0,Math.PI*2);
-      ctx2d.fillStyle='rgba(80,90,120,0.18)'; ctx2d.fill();
+      var cx=w*(0.1+i*0.22)+Math.sin(t*0.0001+i)*15;
+      var cy=h*(0.1+Math.sin(i*1.3)*0.08);
+      var cr=60+i*15;
+      var cloudGrd=ctx2d.createRadialGradient(cx,cy,0,cx,cy,cr);
+      cloudGrd.addColorStop(0,'rgba(60,70,100,0.5)');
+      cloudGrd.addColorStop(1,'rgba(60,70,100,0)');
+      ctx2d.fillStyle=cloudGrd; ctx2d.fillRect(cx-cr,cy-cr,cr*2,cr*2);
     }
-    for (var i=0; i<80; i++) {
-      var ph=(t*0.08+i*17)%h;
-      ctx2d.beginPath(); ctx2d.moveTo((Math.sin(i*3.7)*0.5+0.5)*w,ph); ctx2d.lineTo((Math.sin(i*3.7)*0.5+0.5)*w-1,ph+8+Math.sin(i*2.1)*4);
-      ctx2d.strokeStyle='rgba(180,200,230,'+(0.2+Math.sin(i*1.3)*0.1)+')'; ctx2d.lineWidth=0.5; ctx2d.stroke();
+    // 遠景（霞んだ建物シルエット）
+    for (var i=0; i<6; i++) {
+      var bx=w*(i/6), bw=w*0.15, bh=h*(0.15+Math.sin(i*1.7)*0.1);
+      ctx2d.fillStyle='rgba(20,25,35,0.7)';
+      ctx2d.fillRect(bx,h*0.5-bh,bw,bh+1);
     }
+    // 雨粒
+    for (var i=0; i<120; i++) {
+      var rx2=(Math.sin(i*137.5)*0.5+0.5)*w;
+      var ry2=((t*0.12+i*23)%h);
+      var rlen=8+Math.sin(i*2.1)*4;
+      var ralpha=0.15+Math.sin(i*1.3)*0.08;
+      ctx2d.beginPath();
+      ctx2d.moveTo(rx2,ry2); ctx2d.lineTo(rx2-2,ry2+rlen);
+      ctx2d.strokeStyle='rgba(160,180,220,'+ralpha+')';
+      ctx2d.lineWidth=0.5; ctx2d.stroke();
+    }
+    // 地面（水たまり）
+    ctx2d.fillStyle='#0e1118'; ctx2d.fillRect(0,h*0.75,w,h*0.25);
+    // 水たまりの波紋
+    for (var i=0; i<8; i++) {
+      var px=(Math.sin(i*2.9)*0.5+0.5)*w;
+      var py=h*0.8+Math.sin(i*1.7)*h*0.12;
+      var pr=((t*0.04+i*15)%50);
+      var palpha=0.2*(1-pr/50);
+      ctx2d.beginPath(); ctx2d.ellipse(px,py,pr*1.5,pr*0.4,0,0,Math.PI*2);
+      ctx2d.strokeStyle='rgba(140,170,220,'+palpha+')';
+      ctx2d.lineWidth=0.5; ctx2d.stroke();
+    }
+    // 窓の明かり（遠景）
     for (var i=0; i<12; i++) {
-      var pr=((t*0.05+i*20)%60);
-      if (pr<40) {
-        ctx2d.beginPath(); ctx2d.arc((Math.sin(i*2.9)*0.5+0.5)*w,h*0.75+Math.sin(i*1.7)*h*0.2,pr*0.4,0,Math.PI*2);
-        ctx2d.strokeStyle='rgba(150,180,220,'+(0.15*(1-pr/40))+')'; ctx2d.lineWidth=0.5; ctx2d.stroke();
-      }
+      var wx=(Math.sin(i*2.1)*0.5+0.5)*w;
+      var wy=h*(0.3+Math.sin(i*1.3)*0.15);
+      var wa=0.3+Math.sin(t*0.001+i)*0.1;
+      ctx2d.fillStyle='rgba(255,220,100,'+wa+')';
+      ctx2d.fillRect(wx,wy,3,4);
     }
   }},
   fire: { draw: function(t,w,h){
-    ctx2d.fillStyle='#100a04'; ctx2d.fillRect(0,0,w,h);
-    ctx2d.fillStyle='#0a0a0a'; ctx2d.fillRect(0,h*0.7,w,h*0.3);
-    var cx=w/2;
-    var flames=[[-60,0.5,0],[0,1,1],[50,0.6,2],[-30,0.7,3],[40,0.55,4]];
-    for (var fi=0; fi<flames.length; fi++) {
-      var ox=cx+flames[fi][0], fsc=flames[fi][1], fph=flames[fi][2], oy=h*0.72;
-      for (var l=0; l<6; l++) {
-        var fl=1-l/6, fw=(50+l*10)*fsc, fh=(80+l*20)*fsc, flk=Math.sin(t*0.003+fph+l)*8*fsc;
+    // 暗い夜の焚き火
+    ctx2d.fillStyle='#080503'; ctx2d.fillRect(0,0,w,h);
+    // 地面
+    var groundGrd=ctx2d.createLinearGradient(0,h*0.65,0,h);
+    groundGrd.addColorStop(0,'#120d08'); groundGrd.addColorStop(1,'#080503');
+    ctx2d.fillStyle=groundGrd; ctx2d.fillRect(0,h*0.65,w,h*0.35);
+    var cx=w/2, fireY=h*0.68;
+    // 焚き火の光（地面への反射）
+    var groundLight=ctx2d.createRadialGradient(cx,fireY,0,cx,fireY,w*0.5);
+    groundLight.addColorStop(0,'rgba(255,100,20,0.12)');
+    groundLight.addColorStop(1,'rgba(255,100,20,0)');
+    ctx2d.fillStyle=groundLight; ctx2d.fillRect(0,h*0.55,w,h*0.45);
+    // 薪
+    [[-35,8],[-15,6],[10,7],[30,7],[-25,4],[20,5]].forEach(function(a){
+      ctx2d.save(); ctx2d.translate(cx+a[0],fireY+2);
+      ctx2d.rotate(a[1]*Math.PI/180);
+      ctx2d.fillStyle='#1a1008'; ctx2d.fillRect(-25,-3,50,6); ctx2d.restore();
+    });
+    // 炭の光
+    [[-20,0],[0,0],[15,-2]].forEach(function(a){
+      ctx2d.beginPath(); ctx2d.ellipse(cx+a[0],fireY+a[1],5,3,0,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(255,60,0,0.6)'; ctx2d.fill();
+    });
+    // 炎（複数レイヤー）
+    var drawFlame=function(ox,oy,sc,ph,col1,col2){
+      for (var l=0; l<8; l++) {
+        var fl=1-l/8;
+        var fw=(25+l*8)*sc, fh=(60+l*18)*sc;
+        var flk=Math.sin(t*0.004+ph+l*0.5)*10*sc+Math.sin(t*0.007+ph)*5*sc;
         ctx2d.beginPath(); ctx2d.moveTo(ox,oy);
-        ctx2d.bezierCurveTo(ox-fw,oy-fh*0.3,ox-fw*0.4+flk,oy-fh*0.7,ox+flk*0.5,oy-fh);
-        ctx2d.bezierCurveTo(ox+fw*0.4+flk,oy-fh*0.7,ox+fw,oy-fh*0.3,ox,oy);
-        ctx2d.fillStyle='rgba(255,'+Math.floor(60+fl*120)+','+Math.floor(fl*30)+','+(0.12+fl*0.1)+')'; ctx2d.fill();
+        ctx2d.bezierCurveTo(ox-fw,oy-fh*0.3,ox-fw*0.3+flk,oy-fh*0.75,ox+flk*0.4,oy-fh);
+        ctx2d.bezierCurveTo(ox+fw*0.3+flk,oy-fh*0.75,ox+fw,oy-fh*0.3,ox,oy);
+        var r=fl>0.5?255:Math.floor(255*fl*2);
+        var g=Math.floor(fl*fl*120);
+        ctx2d.fillStyle='rgba('+r+','+g+',0,'+(0.08+fl*0.12)+')'; ctx2d.fill();
+      }
+    };
+    [[-30,0.7,0],[-8,1.1,1.2],[15,0.9,2.4],[-18,0.6,3.6],[8,0.8,4.8]].forEach(function(a){
+      drawFlame(cx+a[0],fireY,a[1],a[2]);
+    });
+    // 火の粉
+    for (var i=0; i<35; i++) {
+      var et=(t*0.0015+i*0.08)%1;
+      var ex=cx+Math.sin(i*2.1+t*0.002)*30*(1+et);
+      var ey=fireY-et*h*0.5;
+      var er=2.5*(1-et);
+      var ea=0.9*(1-et);
+      if(er>0.3){
+        ctx2d.beginPath(); ctx2d.arc(ex,ey,er,0,Math.PI*2);
+        ctx2d.fillStyle='rgba(255,'+(80+Math.sin(i)*60)+',0,'+ea+')'; ctx2d.fill();
       }
     }
-    for (var i=0; i<25; i++) {
-      var et=(t*0.001+i*0.3)%1, ex=cx+Math.sin(i*2.1+t*0.002)*40, ey=h*0.72-et*h*0.4, er=2*(1-et);
-      if (er>0.2) {
-        ctx2d.beginPath(); ctx2d.arc(ex,ey,er,0,Math.PI*2);
-        ctx2d.fillStyle='rgba(255,'+(100+Math.sin(i)*80)+',0,'+(0.7*(1-et))+')'; ctx2d.fill();
-      }
+    // 煙
+    for (var i=0; i<8; i++) {
+      var smokeT=(t*0.0003+i*0.15)%1;
+      var sx=cx+Math.sin(i*1.7+t*0.0005)*20;
+      var sy=fireY-h*0.3-smokeT*h*0.4;
+      var sr=(15+smokeT*40)*0.8;
+      var sa=0.04*(1-smokeT);
+      ctx2d.beginPath(); ctx2d.arc(sx,sy,sr,0,Math.PI*2);
+      ctx2d.fillStyle='rgba(80,70,60,'+sa+')'; ctx2d.fill();
+    }
+    // 木々のシルエット
+    for (var i=0; i<5; i++) {
+      var tx=i===2?-w:i*(w*0.28);
+      var th2=h*(0.4+Math.sin(i*2.3)*0.1);
+      ctx2d.fillStyle='rgba(5,3,1,0.95)';
+      ctx2d.beginPath(); ctx2d.moveTo(tx,h);
+      ctx2d.lineTo(tx+w*0.02,h*0.65-th2); ctx2d.lineTo(tx+w*0.04,h);
+      ctx2d.fill();
     }
   }}
 };
 
 function resizeCanvas() { var app=document.getElementById('app'); canvas.width=app.offsetWidth; canvas.height=app.offsetHeight; }
 function animate(ts) { animT=ts; resizeCanvas(); (themes[currentSound]||themes.none).draw(animT,canvas.width,canvas.height); requestAnimationFrame(animate); }
+currentSound = 'stars'; // 最初は星空
 requestAnimationFrame(animate);
 
 var targetMin=10, duration=600, remaining=600, timerInterval=null, running=false;
@@ -529,11 +833,13 @@ function adjustMin(d) {
   if (running) return;
   targetMin=Math.max(1,Math.min(60,targetMin+d)); duration=targetMin*60; remaining=duration;
   syncDurationUI(); updateDisplay();
+  try { localStorage.setItem('med_target_min', targetMin); } catch(e) {}
 }
 function setDurationSlider(v) {
   if (running) return;
   targetMin=parseInt(v); duration=targetMin*60; remaining=duration;
   document.getElementById('dur-display').textContent=targetMin+' 分'; updateDisplay();
+  try { localStorage.setItem('med_target_min', targetMin); } catch(e) {}
 }
 function updateDisplay() { var m=Math.floor(remaining/60), s=remaining%60; document.getElementById('timer-display').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
 
@@ -582,7 +888,7 @@ function runBreathAnim(){
     ring.classList.add('expand');
     status.textContent='吸う...';
     breathPhaseTimer=setTimeout(function(){
-      if(hold>0){ breathStep=1; } else { breathStep=2; }
+      breathStep=1;
       runBreathAnim();
     }, inhale);
   } else if(breathStep===1){
@@ -682,6 +988,11 @@ function updateBreathSettings() {
   document.getElementById('inhale-val').textContent=inhaleTime+'秒';
   document.getElementById('hold-val').textContent=holdTime+'秒';
   document.getElementById('exhale-val').textContent=exhaleTime+'秒';
+  try {
+    localStorage.setItem('med_inhale', inhaleTime);
+    localStorage.setItem('med_hold', holdTime);
+    localStorage.setItem('med_exhale', exhaleTime);
+  } catch(e) {}
 }
 
 function getBreathPhases() {
@@ -689,9 +1000,7 @@ function getBreathPhases() {
     {label:'吸う', duration:inhaleTime*1000, fill:'100%'},
     {label:'吐く', duration:exhaleTime*1000, fill:'0%'}
   ];
-  if (holdTime>0) {
-    phases.splice(1,0,{label:'止める', duration:holdTime*1000, fill:'100%'});
-  }
+  phases.splice(1,0,{label:'止める', duration:holdTime*1000, fill:'100%'});
   return phases;
 }
 
@@ -717,7 +1026,47 @@ function runBreathPhase(idx) {
   breathInterval=setTimeout(function(){ runBreathPhase((idx+1)%phases.length); }, p.duration);
 }
 
-updateDisplay(); syncDurationUI(); selectSound('none');
+// Splash screen
+function initSplash() {
+  resizeCanvas();
+  var now = new Date();
+  var days = ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
+  var months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  var dateStr = now.getFullYear() + '年 ' + months[now.getMonth()] + ' ' + now.getDate() + '日';
+  var dayStr = days[now.getDay()];
+  var hour = now.getHours();
+  var greeting = hour < 12 ? 'おはようございます' : hour < 18 ? 'こんにちは' : 'こんばんは';
+  document.getElementById('splash-date').textContent = dateStr + '　' + dayStr;
+  document.getElementById('splash-greeting').textContent = greeting;
+
+  // フェードイン
+  setTimeout(function() {
+    document.querySelector('.splash-inner').classList.add('visible');
+  }, 100);
+
+  // 2秒後にタイマー画面へ遷移
+  setTimeout(function() {
+    document.querySelector('.splash-inner').style.opacity = '0';
+    setTimeout(function() {
+      document.getElementById('screen-splash').classList.remove('active');
+      document.getElementById('screen-splash').style.display = 'none';
+      document.getElementById('screen-timer').classList.add('active');
+      selectSound('none'); // 朝日背景に切り替え
+    }, 600);
+  }, 2200);
+}
+// Load saved settings
+try {
+  var savedMin=localStorage.getItem('med_target_min');
+  if (savedMin) { targetMin=parseInt(savedMin); duration=targetMin*60; remaining=duration; }
+  var savedInhale=localStorage.getItem('med_inhale');
+  var savedHold=localStorage.getItem('med_hold');
+  var savedExhale=localStorage.getItem('med_exhale');
+  if (savedInhale) { inhaleTime=parseInt(savedInhale); document.getElementById('inhale-slider').value=inhaleTime; document.getElementById('inhale-val').textContent=inhaleTime+'秒'; }
+  if (savedHold) { holdTime=parseInt(savedHold); document.getElementById('hold-slider').value=holdTime; document.getElementById('hold-val').textContent=holdTime+'秒'; }
+  if (savedExhale) { exhaleTime=parseInt(savedExhale); document.getElementById('exhale-slider').value=exhaleTime; document.getElementById('exhale-val').textContent=exhaleTime+'秒'; }
+} catch(e) {}
+updateDisplay(); syncDurationUI(); initSplash();
 </script>
 <script>
 if ('serviceWorker' in navigator) {
